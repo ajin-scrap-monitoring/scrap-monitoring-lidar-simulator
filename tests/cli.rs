@@ -9,7 +9,7 @@ fn environment() -> Environment {
         (
             cli::CONFIG_ENV,
             Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("examples/generator.v2.json")
+                .join("examples/simulator.v2.json")
                 .display()
                 .to_string(),
         ),
@@ -76,19 +76,19 @@ fn model_override_precedence_and_relative_diagnostics_match_the_contract() {
     };
     let settings = resolve_model_overrides(&environment, &overrides).unwrap();
     let inputs = cli::load_overridden_inputs(&settings).unwrap();
-    assert_eq!(inputs.generator.scenario.mean_fill_duration_s, 600.0);
+    assert_eq!(inputs.simulator.scenario.mean_fill_duration_s, 600.0);
     assert_eq!(
-        inputs.generator.scenario.collection_threshold_range,
+        inputs.simulator.scenario.collection_threshold_range,
         [0.75, 0.8500000000000001]
     );
-    assert!(!inputs.generator.diagnostics.enabled);
+    assert!(!inputs.simulator.diagnostics.enabled);
     assert_eq!(
-        inputs.generator.diagnostics.output_path,
+        inputs.simulator.diagnostics.output_path,
         settings.config_path.parent().unwrap().join("relative")
     );
     assert_eq!(inputs.environment, baseline.environment);
     assert_eq!(inputs.quality_profile, baseline.quality_profile);
-    assert_eq!(inputs.generator.measurement, baseline.generator.measurement);
+    assert_eq!(inputs.simulator.measurement, baseline.simulator.measurement);
 }
 
 #[test]
@@ -164,7 +164,7 @@ fn numeric_overrides_accept_digit_separators() {
 #[test]
 fn check_cli_has_success_error_and_help_exit_codes() {
     let binary = env!("CARGO_BIN_EXE_scrap-monitoring-lidar-simulator");
-    let config = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json");
+    let config = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json");
     let result = Command::new(binary)
         .env_clear()
         .args(["check", "--config", "/missing-first-value", "--config"])
@@ -213,7 +213,7 @@ fn check_cli_has_success_error_and_help_exit_codes() {
 #[test]
 fn repeated_cli_options_validate_every_occurrence_before_using_the_last() {
     let binary = env!("CARGO_BIN_EXE_scrap-monitoring-lidar-simulator");
-    let config = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json");
+    let config = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json");
     let result = Command::new(binary)
         .env_clear()
         .arg("check")

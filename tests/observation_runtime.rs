@@ -1,7 +1,7 @@
 use std::{path::Path, time::Duration};
 
 use scrap_monitoring_lidar_simulator::{
-    configuration::{GeneratorInputs, load_generator_inputs},
+    configuration::{SimulatorInputs, load_simulator_inputs},
     observation::{
         DEFAULT_OBSERVATION_PORT, ObservationError, ObservationPublisherConfig, ObservationScene,
         ObservationSensor, ObservationStreamHeader, TcpObservationPublisher,
@@ -16,8 +16,8 @@ use tokio::{
     time::timeout,
 };
 
-fn inputs() -> GeneratorInputs {
-    load_generator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"))
+fn inputs() -> SimulatorInputs {
+    load_simulator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"))
         .unwrap()
 }
 
@@ -33,7 +33,7 @@ fn header() -> ObservationStreamHeader {
         inputs.environment.environment_id.clone(),
         "run-a",
         "0".repeat(64),
-        inputs.generator.seed,
+        inputs.simulator.seed,
         ObservationScene::from_inputs(&inputs).unwrap(),
     )
     .unwrap()

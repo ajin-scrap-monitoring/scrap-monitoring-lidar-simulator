@@ -70,16 +70,16 @@ P95와 P99는 유효 표본을 오름차순으로 정렬한 뒤 `ceil(p * N)`번
 
 | 항목 | 합격 기준 |
 | --- | --- |
-| 생성기 CPU | P95 75 percent 이하 |
-| 생성기 RSS | P95 128 MiB 이하 |
+| 시뮬레이터 CPU | P95 75 percent 이하 |
+| 시뮬레이터 RSS | P95 128 MiB 이하 |
 | sensor 생성률 | sensor별 명목 10 scan/s 유지 |
-| 생성기 원인 sequence gap | 0 |
+| 시뮬레이터 원인 sequence gap | 0 |
 | 생성 상태 | sensor 2개 모두 `HEALTHY`, `sdk_errors` 0 |
 | 처리 진행 | sensor별 sequence와 처리 결과 시각의 지속 증가 |
 | 장비 생명주기 | OOM, container restart와 thermal throttling 0회 |
 
 `lidar-processing`의 frame 보관 회전과 상태 counter는 해당 구성 요소의 정책이다. 연속된
-generator wire sequence가 처리 과정에서 누락되면 시뮬레이터의 게시 sequence와 처리기의 수신
+simulator wire sequence가 처리 과정에서 누락되면 시뮬레이터의 게시 sequence와 처리기의 수신
 sequence를 대조해 실패 영역을 분리한다.
 
 ### 데이터 의미
@@ -135,21 +135,21 @@ Raspberry Pi 5 8 GB에서 실제 `lidar-processing`과 함께 실행했다. 평�
 
 | 항목 | 관측값 |
 | --- | --- |
-| 생성기 CPU | 평균 24.91 percent, P95 28.89 percent, 최대 33.81 percent |
-| 생성기 RSS | 평균 6.19 MiB, P95 6.52 MiB, 최대 6.88 MiB |
+| 시뮬레이터 CPU | 평균 24.91 percent, P95 28.89 percent, 최대 33.81 percent |
+| 시뮬레이터 RSS | 평균 6.19 MiB, P95 6.52 MiB, 최대 6.88 MiB |
 | sensor 생성률 | sensor별 10.0007 scan/s |
 | sensor sequence | 역행 0회, 검증 시작 이후 frame loss 증가 0회 |
-| 생성기 상태 | 두 sensor 전체 표본 `HEALTHY`, `sdk_errors` 0 |
+| 시뮬레이터 상태 | 두 sensor 전체 표본 `HEALTHY`, `sdk_errors` 0 |
 | host load average 1분 | 평균 0.55, 최대 1.22 |
 | host 가용 memory | 최소 7,454.88 MiB |
 | CPU 온도 | 평균 58.35 C, 최대 61.5 C |
 | 생명주기 | OOM, container restart와 thermal throttling 0회 |
 
-처리 결과 저장 경로에는 같은 생성기 instance의 결과 8,575건이 2시간 48분 동안 기록됐다.
+처리 결과 저장 경로에는 같은 시뮬레이터 instance의 결과 8,575건이 2시간 48분 동안 기록됐다.
 결과 시각 간격은 평균 1.176초이고 1.5초를 넘는 공백은 없었다. 평균 적재 주기 600초에서
 적재 후 수거 추세가 16회 나타났으며, 처리 적재율은 수거 직전 약 0.78-0.83에서 수거 후
 약 0.01-0.03으로 내려갔다.
 
 현재 고정한 `lidar-processing`의 `INCOMPLETE_PROFILE`, `INSUFFICIENT_SENSORS`, frame 보관 회전과
-`CLOCK_UNSYNCED` 상태는 처리 구성 요소의 판정 및 보관 정책이다. 같은 구간의 생성기 sensor
+`CLOCK_UNSYNCED` 상태는 처리 구성 요소의 판정 및 보관 정책이다. 같은 구간의 시뮬레이터 sensor
 sequence와 기준 scan 재현에는 대응하는 오류가 없으므로 시뮬레이터 실패로 분류하지 않는다.

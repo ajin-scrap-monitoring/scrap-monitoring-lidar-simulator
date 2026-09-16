@@ -16,22 +16,22 @@ use crate::runtime::{
 };
 
 use crate::{
-    configuration::{GeneratorInputs, load_generator_inputs},
+    configuration::{SimulatorInputs, load_simulator_inputs},
     edge_integration::{build_synthetic_processing_config, write_synthetic_processing_config},
     error::{ConfigurationError, ErrorKind, Result},
 };
 
-pub const CONFIG_ENV: &str = "SCRAP_LIDAR_GENERATOR_CONFIG";
-pub const MEAN_FILL_DURATION_ENV: &str = "SCRAP_LIDAR_GENERATOR_MEAN_FILL_DURATION_S";
+pub const CONFIG_ENV: &str = "SCRAP_LIDAR_SIMULATOR_CONFIG";
+pub const MEAN_FILL_DURATION_ENV: &str = "SCRAP_LIDAR_SIMULATOR_MEAN_FILL_DURATION_S";
 pub const COLLECTION_THRESHOLD_ENV: &str =
-    "SCRAP_LIDAR_GENERATOR_COLLECTION_THRESHOLD_CENTER_RATIO";
-pub const SOCKET_DIR_ENV: &str = "SCRAP_LIDAR_GENERATOR_GRPC_SOCKET_DIR";
-pub const STATUS_DIR_ENV: &str = "SCRAP_LIDAR_GENERATOR_STATUS_DIR";
-pub const OBSERVATION_HOST_ENV: &str = "SCRAP_LIDAR_GENERATOR_OBSERVATION_HOST";
-pub const OBSERVATION_PORT_ENV: &str = "SCRAP_LIDAR_GENERATOR_OBSERVATION_PORT";
-pub const OBSERVATION_INTERVAL_ENV: &str = "SCRAP_LIDAR_GENERATOR_OBSERVATION_INTERVAL_S";
-pub const DIAGNOSTICS_ENABLED_ENV: &str = "SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_ENABLED";
-pub const DIAGNOSTICS_OUTPUT_ENV: &str = "SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_OUTPUT_PATH";
+    "SCRAP_LIDAR_SIMULATOR_COLLECTION_THRESHOLD_CENTER_RATIO";
+pub const SOCKET_DIR_ENV: &str = "SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_DIR";
+pub const STATUS_DIR_ENV: &str = "SCRAP_LIDAR_SIMULATOR_STATUS_DIR";
+pub const OBSERVATION_HOST_ENV: &str = "SCRAP_LIDAR_SIMULATOR_OBSERVATION_HOST";
+pub const OBSERVATION_PORT_ENV: &str = "SCRAP_LIDAR_SIMULATOR_OBSERVATION_PORT";
+pub const OBSERVATION_INTERVAL_ENV: &str = "SCRAP_LIDAR_SIMULATOR_OBSERVATION_INTERVAL_S";
+pub const DIAGNOSTICS_ENABLED_ENV: &str = "SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_ENABLED";
+pub const DIAGNOSTICS_OUTPUT_ENV: &str = "SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_OUTPUT_PATH";
 
 pub type Environment = BTreeMap<String, String>;
 
@@ -122,8 +122,8 @@ pub struct EdgeValidationArgs {
 
 #[derive(Clone, Debug, Args)]
 pub struct ExportSyntheticProcessingConfigArgs {
-    #[arg(long = "generator-config", value_parser = cli_path)]
-    pub generator_config: Option<String>,
+    #[arg(long = "simulator-config", value_parser = cli_path)]
+    pub simulator_config: Option<String>,
     #[arg(long, value_parser = cli_path)]
     pub output: String,
     #[arg(long, default_value = "/sockets", value_parser = cli_absolute_path)]
@@ -315,20 +315,20 @@ pub fn resolve_runtime_settings(
     })
 }
 
-pub fn load_overridden_inputs(settings: &ModelOverrides) -> Result<GeneratorInputs> {
-    let mut inputs = load_generator_inputs(&settings.config_path)?;
-    let generator = &mut inputs.generator;
+pub fn load_overridden_inputs(settings: &ModelOverrides) -> Result<SimulatorInputs> {
+    let mut inputs = load_simulator_inputs(&settings.config_path)?;
+    let simulator = &mut inputs.simulator;
     if let Some(value) = settings.mean_fill_duration_s {
-        generator.scenario.mean_fill_duration_s = value;
+        simulator.scenario.mean_fill_duration_s = value;
     }
     if let Some(center) = settings.collection_threshold_center_ratio {
-        generator.scenario.collection_threshold_range = [center - 0.05, center + 0.05];
+        simulator.scenario.collection_threshold_range = [center - 0.05, center + 0.05];
     }
     if let Some(enabled) = settings.diagnostics_enabled {
-        generator.diagnostics.enabled = enabled;
+        simulator.diagnostics.enabled = enabled;
     }
     if let Some(path) = &settings.diagnostics_output_path {
-        generator.diagnostics.output_path = if path.is_absolute() {
+        simulator.diagnostics.output_path = if path.is_absolute() {
             path.clone()
         } else {
             settings
@@ -341,7 +341,7 @@ pub fn load_overridden_inputs(settings: &ModelOverrides) -> Result<GeneratorInpu
     Ok(inputs)
 }
 
-pub fn check(command: &Command, environment: &Environment) -> Result<GeneratorInputs> {
+pub fn check(command: &Command, environment: &Environment) -> Result<SimulatorInputs> {
     match command {
         Command::Check { runtime, overrides } => {
             let settings = if *runtime {
@@ -373,10 +373,10 @@ pub fn export_synthetic_processing_config(
 ) -> std::result::Result<(), crate::edge_integration::ProcessingConfigError> {
     let config_path = required_export_value(
         arguments
-            .generator_config
+            .simulator_config
             .as_deref()
             .or_else(|| environment.get(CONFIG_ENV).map(String::as_str)),
-        "--generator-config or SCRAP_LIDAR_GENERATOR_CONFIG",
+        "--simulator-config or SCRAP_LIDAR_SIMULATOR_CONFIG",
     )?;
     let site_id = required_export_value(
         arguments
@@ -399,7 +399,7 @@ pub fn export_synthetic_processing_config(
             .or_else(|| environment.get("CONFIG_REVISION").map(String::as_str)),
         "--config-revision or CONFIG_REVISION",
     )?;
-    let inputs = load_generator_inputs(config_path).map_err(|error| {
+    let inputs = load_simulator_inputs(config_path).map_err(|error| {
         crate::edge_integration::ProcessingConfigError::Invalid(error.to_string())
     })?;
     let output = build_synthetic_processing_config(

@@ -8,17 +8,17 @@
 | --- | --- | --- |
 | 합성 LiDAR 시뮬레이터 | 이 Repository의 container | 적재 모델, 센서별 scan, 관찰 stream과 상태 생성 |
 | `lidar-processing` | 같은 edge 장비의 별도 container | 센서별 scan 구독, 단면 높이 계산과 융합 |
-| 상태 수집기 | edge platform | 생성기 상태 파일 수집 |
+| 상태 수집기 | edge platform | 시뮬레이터 상태 파일 수집 |
 | 시각화 프로그램 | 별도 개발 장비 | 관찰 stream의 3D 표시, 기록과 MP4 생성 |
 
-생성기와 `lidar-processing`은 같은 host의 UDS(Unix Domain Socket)를 공유한다. 생성기가 센서별
+시뮬레이터와 `lidar-processing`은 같은 host의 UDS(Unix Domain Socket)를 공유한다. 시뮬레이터가 센서별
 gRPC(Google Remote Procedure Call) server이고 `lidar-processing`이 server-streaming 구독자다.
 관찰 stream은 router를 통과할 수 있는 JSON Lines TCP 연결이며 scan 경로와 독립적이다.
 
 ```text
                        shared host directory
 +------------------+  lidar_1.sock  +------------------+
-| generator        |--------------->| lidar-processing |
+| simulator        |--------------->| lidar-processing |
 | shared model     |  lidar_2.sock  | gRPC subscribers |
 +--------+---------+--------------->+------------------+
          |
@@ -134,14 +134,14 @@ Rust LiDAR 측정 경계는 8개다.
 | 경로 | 책임 |
 | --- | --- |
 | `contracts/environment/v1/` | 합성 공간과 센서 설치 schema |
-| `contracts/v2/` | 생성 실행 schema |
+| `contracts/v2/` | 시뮬레이터 실행 schema |
 | `contracts/quality/v1/` | 합성 quality 분포 schema |
 | `contracts/lidar/v1/` | `ajin-edge-platform` scan Proto와 고정 출처 |
 | `contracts/observation/v1/` | 시각화 관찰 stream schema와 fixture |
 | `examples/` | 공개 합성 환경과 실행 입력 정본 |
 | `edge-platform-integration/` | 다른 Repository에 전달할 자기완결 통합 묶음 |
 
-생성기의 JSON은 적재 환경, 센서 설치, 시나리오와 합성 측정만 정의한다.
+시뮬레이터의 JSON은 적재 환경, 센서 설치, 시나리오와 합성 측정만 정의한다.
 `lidar-processing`은 이 JSON을 직접 읽지 않는다. `edge_integration` exporter가 센서 설치를
 처리 좌표 변환, 50 mm 단면 ROI(Region of Interest)와 측정 범위로 변환하고 처리기가 요구하는
 데모 calibration을 채운다. exporter는 실제 현장 설정이나 적재율 보정을 만들지 않는다. scan
@@ -152,9 +152,8 @@ SHA-256으로 검증하고 Rust binding은 해당 Proto에서 빌드 시 생성�
 `tools/verify_rust_runtime_contract.py`는 실제 Rust `run` process의 두 UDS lane에서 frame을
 구독하고 같은 engine의 수락 결과와 상태, 관찰 및 종료 계약을 검사한다.
 
-이미 공개된 JSON schema의 `$id`에 포함된 기존 Repository 경로는 계약 식별자이므로 프로젝트
-이름과 함께 바꾸지 않는다. 배포 환경변수와 설정 파일 이름의 호환 경계는
-[`configuration.md`](configuration.md)가 정본이다.
+JSON schema의 `$id`는 현재 `scrap-monitoring-lidar-simulator` Repository 경로를 사용한다. 배포
+환경변수와 설정 파일 이름의 호환 경계는 [`configuration.md`](configuration.md)가 정본이다.
 
 ## 적재 모델과 측정
 
@@ -186,10 +185,10 @@ SHA-256으로 검증하고 Rust binding은 해당 Proto에서 빌드 시 생성�
 | `acquired_monotonic_ns` | scan 완료 시점의 monotonic clock |
 | `scan_hz` | 같은 sensor의 연속 완료 monotonic 시각 차이 |
 | `sequence` | 첫 rate 측정용 scan을 건너뛴 뒤 instance별 1부터 증가 |
-| `instance_id` | 생성기 process 시작마다 sensor별 새 UUID |
+| `instance_id` | 시뮬레이터 process 시작마다 sensor별 새 UUID |
 
 내부 `scan_id`와 wire `sequence`는 책임이 다르다. 내부 값은 시뮬레이션 회전 식별자이고 wire
-값은 외부 driver instance의 공개 순서다. 생성기 재시작은 새 `instance_id`와 sequence 1로
+값은 외부 driver instance의 공개 순서다. 시뮬레이터 재시작은 새 `instance_id`와 sequence 1로
 시작한다.
 
 ## gRPC 출력과 상태
@@ -200,14 +199,14 @@ SHA-256으로 검증하고 Rust binding은 해당 Proto에서 빌드 시 생성�
 유실을 식별한다. 구독자 연결, 종료와 재연결은 생성과 적재 모델을 중단하거나 초기화하지 않는다.
 
 빈 `consumer_id`와 128 byte 초과 값은 gRPC `INVALID_ARGUMENT`, 구독자 상한 초과는
-`RESOURCE_EXHAUSTED`로 응답한다. 이 값과 메시지는 `ajin-edge-platform` 구현을 따른다. UDS는 생성기가
+`RESOURCE_EXHAUSTED`로 응답한다. 이 값과 메시지는 `ajin-edge-platform` 구현을 따른다. UDS는 시뮬레이터가
 시작할 때 mode `0660`으로 만들고 종료할 때 제거한다. 기존 경로가 socket이 아니면 덮어쓰지
 않고 시작에 실패한다. UDS client의 HTTP/2 authority 요구사항은
 [`../edge-platform-integration/`](../edge-platform-integration/)이 정본이다.
 
 상태 파일은 `ajin-edge-platform` 상태 schema, service 이름과 orchestrator directory 구조를 따른다. 첫
 sensor는 `lidar-driver-a`, 둘째 sensor는 `lidar-driver-b`다. 각 파일은 상태 root 아래의
-`<service>/<service>.json`에 있다. 생성기는 2초마다 임시 파일을 같은 하위 directory에서
+`<service>/<service>.json`에 있다. 시뮬레이터는 2초마다 임시 파일을 같은 하위 directory에서
 원자적으로 교체한다. 첫 frame 전 상태는 `STARTING`, 게시 후 상태는 `HEALTHY`다.
 
 ## 관찰 출력

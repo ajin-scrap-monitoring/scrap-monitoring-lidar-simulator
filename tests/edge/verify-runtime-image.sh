@@ -47,7 +47,7 @@ fi
 install -d -m 0777 "$runtime_root/sockets" "$runtime_root/status"
 docker run --rm --platform linux/arm64 \
   --mount "type=bind,src=$config_dir,dst=/config,readonly" \
-  "$image" check --config /config/generator.v2.json
+  "$image" check --config /config/simulator.v2.json
 
 runtime_container="runtime-image-$container_suffix"
 docker run --detach --platform linux/arm64 \
@@ -55,7 +55,7 @@ docker run --detach --platform linux/arm64 \
   --mount "type=bind,src=$config_dir,dst=/config,readonly" \
   --mount "type=bind,src=$runtime_root,dst=/runtime" \
   "$image" run \
-  --config /config/generator.v2.json \
+  --config /config/simulator.v2.json \
   --grpc-socket-dir /runtime/sockets \
   --status-dir /runtime/status \
   --site-id synthetic-site \

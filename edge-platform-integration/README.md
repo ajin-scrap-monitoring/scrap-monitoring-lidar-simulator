@@ -1,6 +1,6 @@
 # Edge platform LiDAR 연동 계약
 
-이 디렉토리는 생성기를 `ajin-edge-platform`의 LiDAR driver test double로 연결하는 데 필요한
+이 디렉토리는 시뮬레이터를 `ajin-edge-platform`의 LiDAR driver test double로 연결하는 데 필요한
 계약과 배포 경계를 제공한다. 높이 계산 프로세스의 계약 정본은 `SOURCE.json`이 고정한 외부
 Repository commit이다.
 
@@ -20,12 +20,12 @@ Repository commit이다.
 
 | 구성 요소 | 책임 |
 |---|---|
-| 생성기 | 두 센서의 합성 scan 생성과 센서별 gRPC server 제공 |
+| 시뮬레이터 | 두 센서의 합성 scan 생성과 센서별 gRPC server 제공 |
 | `lidar-processing` | 두 gRPC stream 구독과 높이 계산 |
-| 생성기 JSON | 합성 환경, 센서 설치, 시나리오와 측정 모델 정의 |
+| 시뮬레이터 JSON | 합성 환경, 센서 설치, 시나리오와 측정 모델 정의 |
 | 처리 JSON | 합성 센서 강체 변환, 단면 ROI, 필터와 필수 데모 calibration 정의 |
 
-생성기는 `lidar-driver-a`와 `lidar-driver-b`의 실행 위치를 하나의 프로세스로 대체한다. 공유
+시뮬레이터는 `lidar-driver-a`와 `lidar-driver-b`의 실행 위치를 하나의 프로세스로 대체한다. 공유
 적재 모델을 한 번만 계산하지만 `lidar_1.sock`과 `lidar_2.sock`을 독립적인 UDS(Unix Domain
 Socket) endpoint로 제공한다. `lidar-processing`이 각 endpoint의 `SubscribeScans`를 호출한다.
 
@@ -38,12 +38,34 @@ Simulator container                     Processing container
 +-----------------------------+   UDS   +-----------------------------+
 ```
 
+## UDS 배포 연결
+
+`SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR`은 시뮬레이터와 `lidar-processing`이 공유하는 edge
+Host 절대 경로다. 공개 배포 예시값은 `/opt/ajin/runtime/sockets/lidar-simulator`이며 배포 환경에서 변경할 수 있다.
+Docker 배포 명령은 같은 값을 두 container의 bind mount 원본으로 사용한다.
+
+```shell
+SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR=/opt/ajin/runtime/sockets/lidar-simulator
+
+docker run \
+  --mount type=bind,src="$SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR",dst=/run/lidar \
+  simulator-image
+
+docker run \
+  --mount type=bind,src="$SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR",dst=/sockets \
+  processing-image
+```
+
+시뮬레이터의 container 내부 UDS directory는 `/run/lidar`이고 `lidar-processing`의 내부 UDS
+directory는 `/sockets`다. 처리 설정은 `unix:/sockets/lidar_1.sock`과
+`unix:/sockets/lidar_2.sock`을 endpoint로 사용한다. Host 절대 경로를 처리 JSON에 넣지 않는다.
+
 ## Scan 계약
 
-`v1/lidar.proto`는 외부 계약의 고정 사본이다. 생성기는 SDK(Software Development Kit)의 HQ
+`v1/lidar.proto`는 외부 계약의 고정 사본이다. 시뮬레이터는 SDK(Software Development Kit)의 HQ
 측정값을 `ajin-edge-platform` driver와 같은 규칙으로 정규화하여 `ScanFrame`을 만든다.
 
-| 필드 | 생성기 의미 |
+| 필드 | 시뮬레이터 의미 |
 |---|---|
 | `schema_version` | `1.0` |
 | `edge_id` | 배포 설정의 `EDGE_ID` |
@@ -54,7 +76,7 @@ Simulator container                     Processing container
 | `sdk_status` | 정상 생성 frame의 `OK` |
 | `scan_hz` | 직전 완료 scan과의 단조 시각 간격으로 계산한 주기 |
 | `samples` | 각도 오름차순의 mm 및 SDK quality 정규화 결과 |
-| `instance_id` | 생성기 재시작마다 센서별로 바뀌는 UUID |
+| `instance_id` | 시뮬레이터 재시작마다 센서별로 바뀌는 UUID |
 | `config_revision` | 배포 설정의 `CONFIG_REVISION` |
 
 각도는 HQ `angle_z_q14`를 `ajin-edge-platform` driver와 같은 정수 반올림식으로 `angle_mdeg`에 변환한다.
@@ -133,13 +155,13 @@ image를 게시하지 않는다.
 
 ## 환경과 처리 설정
 
-생성기의 `examples/environment.v1.json`은 합성 환경의 정본이다. `lidar-processing`은 이
+시뮬레이터의 `examples/environment.v1.json`은 합성 환경의 정본이다. `lidar-processing`은 이
 schema를 직접 읽지 않는다. 합성 통합 검증을 준비할 때 다음 exporter가 환경과 품질 설정을
 `lidar-processing` JSON으로 변환한다.
 
 ```shell
 cargo run --locked -- export-synthetic-processing-config \
-  --generator-config examples/generator.v2.json \
+  --simulator-config examples/simulator.v2.json \
   --socket-dir /sockets \
   --site-id synthetic-site \
   --edge-id synthetic-edge \
@@ -147,7 +169,7 @@ cargo run --locked -- export-synthetic-processing-config \
   --output processing.synthetic.json
 ```
 
-`SITE_ID`, `EDGE_ID`, `CONFIG_REVISION`과 `SCRAP_LIDAR_GENERATOR_CONFIG` 환경변수로 같은 값을
+`SITE_ID`, `EDGE_ID`, `CONFIG_REVISION`과 `SCRAP_LIDAR_SIMULATOR_CONFIG` 환경변수로 같은 값을
 제공할 수 있다. 출력은 공개 합성 환경의 연동 검증만 대상으로 하며 실제 edge platform 설정을
 입력받거나 병합하지 않는다. 실제 센서 설치 보정, 융합 보정과 적재율 계산은 이 계약의 범위 밖이다.
 
@@ -165,7 +187,7 @@ bin을 만든다. 이 설정의 `demo`와 `allow_demo_calibration`은 모두 `tr
 
 ## 좌표 변환 기준
 
-생성기의 sensor 광선과 `lidar-processing` 좌표는 다음 식으로 연결한다.
+시뮬레이터의 sensor 광선과 `lidar-processing` 좌표는 다음 식으로 연결한다.
 
 ```text
 world_point = p0 + distance * (cos(angle) * u0 + sin(angle) * u90)
@@ -187,7 +209,7 @@ ROI(Region of Interest)로 선택한다. `lidar-processing`이 요구하는 비�
 
 ## 상태 계약
 
-생성기는 상태 root에 `lidar-driver-a/lidar-driver-a.json`과
+시뮬레이터는 상태 root에 `lidar-driver-a/lidar-driver-a.json`과
 `lidar-driver-b/lidar-driver-b.json`을 기록한다. 첫 번째 환경 센서는 service
 `lidar-driver-a`, 두 번째 환경 센서는 `lidar-driver-b`에 대응한다. 이 하위 경로는 `ajin-edge-platform`
 orchestrator의 수집 구조와 같다. 상태 schema, 식별자, freshness, sequence, frame loss와 정상

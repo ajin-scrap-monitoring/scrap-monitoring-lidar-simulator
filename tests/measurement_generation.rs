@@ -1,5 +1,5 @@
 use scrap_monitoring_lidar_simulator::{
-    configuration::{GeneratorInputs, load_generator_inputs},
+    configuration::{SimulatorInputs, load_simulator_inputs},
     geometry::{Polygon2, Vec2},
     measurement::{
         CollectionOcclusionSettings, DistortionInterval, DistortionPhase, DropoutSettings,
@@ -11,11 +11,11 @@ use scrap_monitoring_lidar_simulator::{
     scenario::{HeightField, build_scenario_simulator},
 };
 
-fn inputs() -> GeneratorInputs {
-    load_generator_inputs("examples/generator.v2.json").unwrap()
+fn inputs() -> SimulatorInputs {
+    load_simulator_inputs("examples/simulator.v2.json").unwrap()
 }
 
-fn polygon(inputs: &GeneratorInputs) -> Polygon2 {
+fn polygon(inputs: &SimulatorInputs) -> Polygon2 {
     Polygon2::new(
         inputs
             .environment
@@ -176,13 +176,13 @@ fn falling_timeline_uses_model_rng_and_replays_independently() {
         duration_s_range: [0.1, 0.3],
         distance_reduction_m_range: [0.2, 0.5],
         inlet_positions: inputs
-            .generator
+            .simulator
             .scenario
             .inlet_positions_xy_m
             .iter()
             .map(|value| Vec2::try_from(*value).unwrap())
             .collect(),
-        placement_radius_m: inputs.generator.scenario.surface.pile_spread_radius_m,
+        placement_radius_m: inputs.simulator.scenario.surface.pile_spread_radius_m,
     });
     let mut first = SpatialDistortionTimeline::new(
         boundary.clone(),

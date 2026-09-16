@@ -7,7 +7,7 @@ mod generation;
 
 #[cfg(feature = "edge-validation")]
 pub use application::run_edge_validation_application;
-pub use application::{ApplicationError, ApplicationSummary, run_generator_application};
+pub use application::{ApplicationError, ApplicationSummary, run_simulator_application};
 #[cfg(feature = "edge-validation")]
 pub use edge_validation::{
     DEFAULT_MEASUREMENT_DURATION_S, DEFAULT_SAMPLE_CAPACITY, DEFAULT_WARMUP_DURATION_S,

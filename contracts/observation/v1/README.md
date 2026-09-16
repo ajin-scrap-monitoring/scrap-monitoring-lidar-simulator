@@ -2,23 +2,23 @@
 
 ## 전송 경계
 
-전송에는 생성기 producer와 시각화 receiver의 2개 구성 요소가 참여한다. 생성기는 TCP
+전송에는 시뮬레이터 producer와 시각화 receiver의 2개 구성 요소가 참여한다. 시뮬레이터는 TCP
 (Transmission Control Protocol) client로 receiver에 연결하고, receiver는 설정한 주소와
 port에서 server로 대기한다.
 
-생성기는 UTF-8 JSON 객체 하나와 LF(Line Feed) 1 byte를 한 레코드로 전송한다. 한
+시뮬레이터는 UTF-8 JSON 객체 하나와 LF(Line Feed) 1 byte를 한 레코드로 전송한다. 한
 레코드는 LF를 포함하여 최대 1,048,576 byte다. receiver는 TCP packet 경계가 아니라 LF를 기준으로
 레코드를 조립해야 하며, 연결 종료 시 남은 불완전 레코드를 폐기해야 한다. receiver는
-생성기에 어떤 byte도 보내지 않는다.
+시뮬레이터에 어떤 byte도 보내지 않는다.
 
 `header.schema.json`과 `observation.schema.json`이 레코드 형식의 정본이다. TCP 연결의
 첫 레코드는 `load_model_stream_header`이고 이후 레코드는 `load_model_observation`이다.
-연결이 바뀌면 생성기는 header를 다시 전송한다. version 1 파일은 호환성을 깨는 방식으로
+연결이 바뀌면 시뮬레이터는 header를 다시 전송한다. version 1 파일은 호환성을 깨는 방식으로
 변경하지 않으며 field 의미나 framing이 달라지면 새 version을 추가한다.
 
 ## 전달 의미
 
-생성기는 한 실행에서 전송 대상으로 선택한 레코드에 1부터 증가하는 `sequence`를
+시뮬레이터는 한 실행에서 전송 대상으로 선택한 레코드에 1부터 증가하는 `sequence`를
 부여한다. TCP 연결이 바뀌어도 같은 `run_id`의 sequence는 계속 증가한다. receiver가 같은
 `run_id`에서 sequence의 증가 폭이 1보다 큰 레코드를 받으면 중간 상태가 producer에서
 폐기되었거나 연결 중 유실된 것으로 처리한다.
@@ -58,7 +58,7 @@ bounding box를 덮으므로 polygon 밖의 node가 포함될 수 있다. render
 
 ## 실행 식별
 
-`run_id`는 생성기 process 실행을 구분하며 header와 모든 observation에 들어간다.
+`run_id`는 시뮬레이터 process 실행을 구분하며 header와 모든 observation에 들어간다.
 `environment_id`는 사용한 환경 설정을 식별한다. `seed`와 `input_fingerprint_sha256`은
 기록 묶음의 입력 동일성을 확인하는 값이며 receiver는 fingerprint를 opaque lowercase
 SHA-256(Secure Hash Algorithm 256-bit) 값으로 취급한다.

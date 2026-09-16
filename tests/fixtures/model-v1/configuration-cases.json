@@ -11,7 +11,7 @@
         ],
         "value": 18446744073709551615
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -25,7 +25,7 @@
         ],
         "value": 18446744073709551616
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -39,7 +39,7 @@
         ],
         "value": true
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -53,7 +53,7 @@
         ],
         "value": 1.0
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -66,7 +66,7 @@
         ],
         "value": 2.0
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -80,7 +80,7 @@
         ],
         "value": true
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -95,7 +95,7 @@
         ],
         "value": 1
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -110,7 +110,7 @@
         ],
         "value": 1
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -125,7 +125,7 @@
         ],
         "value": 327680.0000000001
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -140,7 +140,7 @@
         ],
         "value": 20
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -154,7 +154,7 @@
         ],
         "value": 16
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -169,7 +169,7 @@
         ],
         "value": 17
       },
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "expected": {
@@ -306,7 +306,7 @@
         "error": "duplicate JSON field: seed"
       },
       "name": "duplicate-field",
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "document": "{\"seed\":NaN}",
@@ -315,7 +315,7 @@
         "error": "non-finite JSON number is not allowed: NaN"
       },
       "name": "non-finite-number",
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "document": "{}",
@@ -324,7 +324,7 @@
         "error": "$ is missing fields: config_version, diagnostics, environment_path, measurement, observation_transport, quality_profile_path, scenario, seed"
       },
       "name": "missing-fields",
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     },
     {
       "document": "[]",
@@ -333,7 +333,7 @@
         "error": "$ must be an object"
       },
       "name": "non-object-root",
-      "source": "examples/generator.v2.json"
+      "source": "examples/simulator.v2.json"
     }
   ],
   "comparison_class": "rng-independent",
@@ -407,7 +407,7 @@
       ],
       "top_z_m": 10.0
     },
-    "generator.v2.json": {
+    "simulator.v2.json": {
       "diagnostics": {
         "enabled": true,
         "output_path": "examples/diagnostics",

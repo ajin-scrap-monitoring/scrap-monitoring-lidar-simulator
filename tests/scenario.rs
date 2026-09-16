@@ -2,7 +2,7 @@ use std::path::Path;
 
 use scrap_monitoring_lidar_simulator::{
     MAX_INLET_POSITIONS,
-    configuration::{GeneratorInputs, load_generator_inputs},
+    configuration::{SimulatorInputs, load_simulator_inputs},
     randomness::SIMULATION_MODEL_VERSION,
     scenario::{
         MAX_EVENT_SNAPSHOT_BYTES, MAX_EVENTS_PER_ADVANCE, ScenarioPhase, ScenarioSettings,
@@ -12,14 +12,14 @@ use scrap_monitoring_lidar_simulator::{
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-fn public_inputs() -> GeneratorInputs {
-    load_generator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"))
+fn public_inputs() -> SimulatorInputs {
+    load_simulator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"))
         .unwrap()
 }
 
-fn scripted_inputs() -> GeneratorInputs {
+fn scripted_inputs() -> SimulatorInputs {
     let mut inputs = public_inputs();
-    let scenario = &mut inputs.generator.scenario;
+    let scenario = &mut inputs.simulator.scenario;
     scenario.mean_fill_duration_s = 4.25;
     scenario.fill_duration_factor_range = [1.0, 1.0];
     scenario.fill_rate_factor_range = [1.0, 1.0];
@@ -154,7 +154,7 @@ fn same_model_seed_reproduces_nonflat_surface_and_different_seed_isolated_stream
     let mut first = build_scenario_simulator(&inputs).unwrap();
     let mut second = build_scenario_simulator(&inputs).unwrap();
     let mut different_inputs = inputs.clone();
-    different_inputs.generator.seed += 1;
+    different_inputs.simulator.seed += 1;
     let mut different = build_scenario_simulator(&different_inputs).unwrap();
 
     let first_state = first.advance_to(2.0).unwrap().state;
@@ -218,8 +218,8 @@ fn public_environment_and_time_scaling_keep_distinct_owners() {
     close(simulator.surface().surface_area_m2(), 14.76, 1e-10);
     close(simulator.surface().capacity_m3(), 147.6, 1e-10);
 
-    inputs.generator.scenario.mean_fill_duration_s = 3_600.0;
-    let settings = ScenarioSettings::from_config(&inputs.generator.scenario).unwrap();
+    inputs.simulator.scenario.mean_fill_duration_s = 3_600.0;
+    let settings = ScenarioSettings::from_config(&inputs.simulator.scenario).unwrap();
     assert_eq!(settings.surface_update_interval_s(), 0.5);
     assert_eq!(settings.fill_rate_change_duration_s_range(), [12.5, 37.5]);
     assert_eq!(
@@ -241,7 +241,7 @@ fn invalid_or_unbounded_advance_is_transactional() {
     assert_eq!(simulator.snapshot().unwrap(), initial);
 
     let mut large_inputs = scripted_inputs();
-    large_inputs.generator.scenario.surface.cell_size_m = 0.05;
+    large_inputs.simulator.scenario.surface.cell_size_m = 0.05;
     let mut large = build_scenario_simulator(&large_inputs).unwrap();
     let byte_limited_events =
         MAX_EVENT_SNAPSHOT_BYTES / std::mem::size_of_val(large.surface().heights_m());
@@ -255,22 +255,22 @@ fn invalid_or_unbounded_advance_is_transactional() {
 #[test]
 fn inlet_and_phase_schedule_errors_are_rejected_before_mutation() {
     let mut inputs = scripted_inputs();
-    inputs.generator.scenario.inlet_positions_xy_m[0] = [100.0, 100.0];
+    inputs.simulator.scenario.inlet_positions_xy_m[0] = [100.0, 100.0];
     assert!(build_scenario_simulator(&inputs).is_err());
 
     let mut inputs = scripted_inputs();
-    inputs.generator.scenario.inlet_positions_xy_m[1] =
-        inputs.generator.scenario.inlet_positions_xy_m[0];
+    inputs.simulator.scenario.inlet_positions_xy_m[1] =
+        inputs.simulator.scenario.inlet_positions_xy_m[0];
     assert!(build_scenario_simulator(&inputs).is_err());
 
     let mut inputs = scripted_inputs();
-    inputs.generator.scenario.inlet_positions_xy_m = (0..=MAX_INLET_POSITIONS)
+    inputs.simulator.scenario.inlet_positions_xy_m = (0..=MAX_INLET_POSITIONS)
         .map(|index| [index as f64, 0.0])
         .collect();
     assert!(build_scenario_simulator(&inputs).is_err());
 
     let mut inputs = scripted_inputs();
-    inputs.generator.scenario.mean_fill_duration_s = f64::MAX;
-    inputs.generator.scenario.fill_duration_factor_range = [1.0, 1.0];
+    inputs.simulator.scenario.mean_fill_duration_s = f64::MAX;
+    inputs.simulator.scenario.fill_duration_factor_range = [1.0, 1.0];
     assert!(build_scenario_simulator(&inputs).is_err());
 }

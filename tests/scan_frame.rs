@@ -7,7 +7,7 @@ use std::{
 
 use prost::Message;
 use scrap_monitoring_lidar_simulator::{
-    configuration::load_generator_inputs,
+    configuration::load_simulator_inputs,
     measurement::{
         HitKind, MeasuredScan, MeasurementResult, ReferencePoint, ReferenceScan, ScanFrameFactory,
         ScheduledScan, SystemScanFrameFactory, TimedReferenceScan, sdk,
@@ -60,7 +60,7 @@ fn timed_reference(value: &Value) -> TimedReferenceScan {
 }
 
 fn fixed_result(reference: TimedReferenceScan) -> MeasurementResult {
-    let inputs = load_generator_inputs("examples/generator.v2.json").unwrap();
+    let inputs = load_simulator_inputs("examples/simulator.v2.json").unwrap();
     let profile = inputs
         .quality_profile
         .sensors

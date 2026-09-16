@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-generator/contracts/observation/v1/header.schema.json",
+  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-simulator/contracts/observation/v1/header.schema.json",
   "title": "Load-model observation stream header v1",
   "type": "object",
   "additionalProperties": false,

@@ -1,7 +1,7 @@
 # 합성 환경 규격서 묶음
 
 이 디렉토리는 공개 합성 환경의 규격서와 생성 도구를 함께 보관하는 이동 가능한 문서 경계다.
-생성기 실행과 ARM64 OCI(Open Container Initiative) image는 이 디렉토리에 의존하지 않는다.
+시뮬레이터 실행과 ARM64 OCI(Open Container Initiative) image는 이 디렉토리에 의존하지 않는다.
 
 ## 산출물
 
@@ -25,7 +25,7 @@
 | 경로 | 책임 |
 | --- | --- |
 | `examples/environment.v1.json` | 적재 공간과 sensor 설치 |
-| `examples/generator.v2.json` | 시나리오, 측정과 seed |
+| `examples/simulator.v2.json` | 시나리오, 측정과 seed |
 | `examples/quality-profile.v1.json` | Sensor별 합성 quality 분포 |
 
 DOCX, PDF, PNG(Portable Network Graphics)와 `SOURCE.json`은 세 입력, 문서 생성기와 문서에

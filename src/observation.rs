@@ -19,7 +19,7 @@ use tokio::{
 };
 
 use crate::{
-    configuration::{GeneratorInputs, ObservationTransportConfig},
+    configuration::{ObservationTransportConfig, SimulatorInputs},
     output_format::{ObservationSurfaceDocument, ScenarioDocument, validate_model_snapshot},
     randomness::{ModelRng, RandomError, RandomSource, StreamScope},
     scenario::ScenarioModelSnapshot,
@@ -159,7 +159,7 @@ impl ObservationScene {
         })
     }
 
-    pub fn from_inputs(inputs: &GeneratorInputs) -> Result<Self> {
+    pub fn from_inputs(inputs: &SimulatorInputs) -> Result<Self> {
         let sensors = inputs
             .environment
             .sensors
@@ -172,7 +172,7 @@ impl ObservationScene {
             inputs.environment.boundary_xy_m.clone(),
             inputs.environment.floor_z_m,
             inputs.environment.top_z_m,
-            inputs.generator.scenario.inlet_positions_xy_m.clone(),
+            inputs.simulator.scenario.inlet_positions_xy_m.clone(),
             sensors,
         )
     }
@@ -796,13 +796,13 @@ impl ReconnectBackoff {
 mod tests {
     use std::path::Path;
 
-    use crate::{configuration::load_generator_inputs, scenario::build_scenario_simulator};
+    use crate::{configuration::load_simulator_inputs, scenario::build_scenario_simulator};
 
     use super::*;
 
     fn publisher() -> TcpObservationPublisher {
-        let inputs = load_generator_inputs(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+        let inputs = load_simulator_inputs(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
         )
         .unwrap();
         let scene = ObservationScene::from_inputs(&inputs).unwrap();
@@ -810,7 +810,7 @@ mod tests {
             inputs.environment.environment_id.clone(),
             "run-a",
             "0".repeat(64),
-            inputs.generator.seed,
+            inputs.simulator.seed,
             scene,
         )
         .unwrap();
@@ -823,8 +823,8 @@ mod tests {
     fn sequence_stops_at_the_json_safe_integer_limit() {
         let publisher = publisher();
         lock(&publisher.shared.state).next_sequence = MAX_OBSERVATION_SEQUENCE;
-        let inputs = load_generator_inputs(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+        let inputs = load_simulator_inputs(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
         )
         .unwrap();
         let simulator = build_scenario_simulator(&inputs).unwrap();

@@ -1,7 +1,7 @@
 use clap::Parser;
 use scrap_monitoring_lidar_simulator::{
     cli::{self, Cli, Command},
-    runtime::run_generator_application,
+    runtime::run_simulator_application,
 };
 
 #[cfg(feature = "edge-validation")]
@@ -24,7 +24,7 @@ async fn main() -> std::process::ExitCode {
                 println!(
                     "validation=passed sensors={} seed={}",
                     inputs.environment.sensors.len(),
-                    inputs.generator.seed
+                    inputs.simulator.seed
                 );
                 std::process::ExitCode::SUCCESS
             }
@@ -57,7 +57,7 @@ async fn main() -> std::process::ExitCode {
                     return std::process::ExitCode::from(2);
                 }
             };
-            match run_generator_application(inputs, settings).await {
+            match run_simulator_application(inputs, settings).await {
                 Ok(summary) => {
                     let published = summary
                         .scan_stats

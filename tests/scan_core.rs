@@ -1,5 +1,5 @@
 use scrap_monitoring_lidar_simulator::{
-    configuration::{GeneratorInputs, SensorConfig, load_generator_inputs},
+    configuration::{SensorConfig, SimulatorInputs, load_simulator_inputs},
     geometry::{Polygon2, Triangle, Vec2, Vec3},
     measurement::{
         CollectionOcclusionEvent, EnvironmentScene, FallingMaterialEvent, HitKind,
@@ -17,11 +17,11 @@ const DISTORTIONS: &str = include_str!("fixtures/model-v1/distortion-events.json
 const HEIGHT_FIELD: &str = include_str!("fixtures/model-v1/height-field-operations.json");
 const TOLERANCE: f64 = 1e-10;
 
-fn inputs() -> GeneratorInputs {
-    load_generator_inputs("examples/generator.v2.json").unwrap()
+fn inputs() -> SimulatorInputs {
+    load_simulator_inputs("examples/simulator.v2.json").unwrap()
 }
 
-fn polygon(inputs: &GeneratorInputs) -> Polygon2 {
+fn polygon(inputs: &SimulatorInputs) -> Polygon2 {
     Polygon2::new(
         inputs
             .environment
@@ -42,8 +42,8 @@ fn sensor_frame(sensor: &SensorConfig) -> SensorFrame {
     .unwrap()
 }
 
-fn deposited_surface(inputs: &GeneratorInputs) -> HeightField {
-    let scenario = &inputs.generator.scenario;
+fn deposited_surface(inputs: &SimulatorInputs) -> HeightField {
+    let scenario = &inputs.simulator.scenario;
     let mut surface = HeightField::new(
         polygon(inputs),
         inputs.environment.floor_z_m,
@@ -163,7 +163,7 @@ fn an_empty_surface_at_the_floor_does_not_replace_the_earlier_floor_hit() {
         polygon(&inputs),
         inputs.environment.floor_z_m,
         inputs.environment.top_z_m,
-        inputs.generator.scenario.surface.cell_size_m,
+        inputs.simulator.scenario.surface.cell_size_m,
     )
     .unwrap()
     .surface_snapshot()
@@ -610,15 +610,15 @@ fn snapshot_event_time_uses_new_state_and_retention_tracks_earliest_pending_samp
         polygon(&inputs),
         inputs.environment.floor_z_m,
         inputs.environment.top_z_m,
-        inputs.generator.scenario.surface.cell_size_m,
+        inputs.simulator.scenario.surface.cell_size_m,
     )
     .unwrap();
     let initial = surface.surface_snapshot().unwrap();
     surface
         .add_volume(
             1.0,
-            Vec2::try_from(inputs.generator.scenario.inlet_positions_xy_m[0]).unwrap(),
-            inputs.generator.scenario.surface.pile_spread_radius_m,
+            Vec2::try_from(inputs.simulator.scenario.inlet_positions_xy_m[0]).unwrap(),
+            inputs.simulator.scenario.surface.pile_spread_radius_m,
         )
         .unwrap();
     let updated = surface.surface_snapshot().unwrap();
@@ -640,7 +640,7 @@ fn snapshot_event_time_uses_new_state_and_retention_tracks_earliest_pending_samp
         polygon(&inputs),
         inputs.environment.floor_z_m,
         inputs.environment.top_z_m,
-        inputs.generator.scenario.surface.cell_size_m,
+        inputs.simulator.scenario.surface.cell_size_m,
     )
     .unwrap()
     .surface_snapshot()

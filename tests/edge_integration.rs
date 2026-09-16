@@ -1,17 +1,17 @@
 use std::{fs, path::Path, process::Command};
 
 use scrap_monitoring_lidar_simulator::{
-    configuration::{GeneratorInputs, load_generator_inputs},
+    configuration::{SimulatorInputs, load_simulator_inputs},
     edge_integration::{build_synthetic_processing_config, write_synthetic_processing_config},
 };
 use serde_json::Value;
 
-fn inputs() -> GeneratorInputs {
-    load_generator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"))
+fn inputs() -> SimulatorInputs {
+    load_simulator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"))
         .unwrap()
 }
 
-fn config(inputs: &GeneratorInputs) -> Value {
+fn config(inputs: &SimulatorInputs) -> Value {
     build_synthetic_processing_config(
         inputs,
         Path::new("/sockets"),
@@ -256,8 +256,8 @@ fn writer_is_deterministic_and_cli_uses_only_processing_identity_values() {
     let result = Command::new(binary)
         .env_clear()
         .env(
-            "SCRAP_LIDAR_GENERATOR_CONFIG",
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+            "SCRAP_LIDAR_SIMULATOR_CONFIG",
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
         )
         .env("SITE_ID", "synthetic-site")
         .env("EDGE_ID", "synthetic-edge")
@@ -282,8 +282,8 @@ fn writer_is_deterministic_and_cli_uses_only_processing_identity_values() {
     let empty = Command::new(binary)
         .env_clear()
         .env(
-            "SCRAP_LIDAR_GENERATOR_CONFIG",
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+            "SCRAP_LIDAR_SIMULATOR_CONFIG",
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
         )
         .env("SITE_ID", "fallback-site")
         .env("EDGE_ID", "synthetic-edge")

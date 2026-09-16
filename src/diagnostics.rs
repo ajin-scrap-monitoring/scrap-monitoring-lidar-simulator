@@ -21,7 +21,7 @@ use tokio::{sync::oneshot, time::timeout};
 
 use crate::{
     MAX_DIAGNOSTIC_SCANS_PER_SENSOR,
-    configuration::{GeneratorInputs, MeasurementConfig, ScenarioConfig},
+    configuration::{MeasurementConfig, ScenarioConfig, SimulatorInputs},
     measurement::{HitKind, MeasurementResult},
     output_format::{DiagnosticsSurfaceDocument, ScenarioDocument, validate_model_snapshot},
     scenario::ScenarioModelSnapshot,
@@ -263,15 +263,15 @@ impl DiagnosticsWriterConfig {
     }
 
     pub fn from_inputs(
-        inputs: &GeneratorInputs,
+        inputs: &SimulatorInputs,
         run_id: impl Into<String>,
         run_started_at_utc_us: i64,
     ) -> Result<Self> {
         Self::new(
-            inputs.generator.diagnostics.output_path.clone(),
+            inputs.simulator.diagnostics.output_path.clone(),
             inputs.environment.environment_id.clone(),
-            generator_input_fingerprint(inputs)?,
-            inputs.generator.seed,
+            simulator_input_fingerprint(inputs)?,
+            inputs.simulator.seed,
             run_id,
             run_started_at_utc_us,
             inputs
@@ -281,7 +281,7 @@ impl DiagnosticsWriterConfig {
                 .map(|sensor| sensor.sensor_id.clone())
                 .collect(),
             inputs
-                .generator
+                .simulator
                 .diagnostics
                 .sample_scan_limit_per_sensor
                 .get(),
@@ -761,11 +761,11 @@ struct FingerprintSensorQuality<'a> {
     invalid_distance_frequencies: &'a [u64],
 }
 
-pub fn generator_input_fingerprint(inputs: &GeneratorInputs) -> Result<String> {
+pub fn simulator_input_fingerprint(inputs: &SimulatorInputs) -> Result<String> {
     let value = serde_json::to_value(FingerprintDocument {
-        seed: inputs.generator.seed,
-        scenario: &inputs.generator.scenario,
-        measurement: &inputs.generator.measurement,
+        seed: inputs.simulator.seed,
+        scenario: &inputs.simulator.scenario,
+        measurement: &inputs.simulator.measurement,
         environment: &inputs.environment,
         quality_profile: FingerprintQualityProfile {
             sensors: inputs
@@ -867,7 +867,7 @@ mod tests {
     };
 
     use crate::{
-        configuration::load_generator_inputs,
+        configuration::load_simulator_inputs,
         scenario::{ScenarioModelSnapshot, build_scenario_simulator},
     };
 
@@ -898,8 +898,8 @@ mod tests {
     }
 
     fn snapshot(elapsed_s: f64) -> ScenarioModelSnapshot {
-        let inputs = load_generator_inputs(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+        let inputs = load_simulator_inputs(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
         )
         .unwrap();
         let mut simulator = build_scenario_simulator(&inputs).unwrap();

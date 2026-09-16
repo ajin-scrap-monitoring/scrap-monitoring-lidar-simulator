@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use scrap_monitoring_lidar_simulator::{
-    configuration::load_generator_inputs,
+    configuration::load_simulator_inputs,
     geometry::{GeometryError, MAX_POLYGON_VERTICES, Polygon2, Ray, Triangle, Vec2, Vec3},
     scenario::{CellCoverage, HeightField, MAX_GRID_NODES, MAX_SLOPE_RELAXATION_ITERATIONS},
 };
@@ -62,13 +62,13 @@ fn every_height_field_value_matches_the_model_v1_fixture() {
     .unwrap();
     assert_eq!(fixture["comparison_class"], "rng-independent");
     assert_eq!(fixture["grid_order"], "y-major");
-    assert_eq!(fixture["source"], "examples/generator.v2.json");
-    let inputs = load_generator_inputs(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+    assert_eq!(fixture["source"], "examples/simulator.v2.json");
+    let inputs = load_simulator_inputs(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
     )
     .unwrap();
     let environment = &inputs.environment;
-    let config = &inputs.generator.scenario;
+    let config = &inputs.simulator.scenario;
     let mut surface = HeightField::new(
         polygon(&environment.boundary_xy_m),
         environment.floor_z_m,

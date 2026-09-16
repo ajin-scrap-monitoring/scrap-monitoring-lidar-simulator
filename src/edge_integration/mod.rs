@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, fs, path::Path};
 use serde_json::{Value, json};
 
 use crate::{
-    configuration::{GeneratorInputs, SensorConfig},
+    configuration::{SensorConfig, SimulatorInputs},
     geometry::{Polygon2, Vec2},
     scenario::MAX_GRID_NODES,
 };
@@ -38,7 +38,7 @@ pub type Result<T> = std::result::Result<T, ProcessingConfigError>;
 
 /// Build the complete demo configuration consumed by pinned `lidar-processing`.
 pub fn build_synthetic_processing_config(
-    inputs: &GeneratorInputs,
+    inputs: &SimulatorInputs,
     socket_directory: &Path,
     site_id: &str,
     edge_id: &str,
@@ -117,7 +117,7 @@ pub fn build_synthetic_processing_config(
             "single_sensor_maps": {},
         },
         "processing": {
-            "target_scan_hz": inputs.generator.measurement.rotation_rate_hz,
+            "target_scan_hz": inputs.simulator.measurement.rotation_rate_hz,
         },
         "sensors": sensors,
     }))
@@ -139,7 +139,7 @@ pub fn write_synthetic_processing_config(path: &Path, config: &Value) -> Result<
 
 fn sensor_processing_config(
     sensor: &SensorConfig,
-    inputs: &GeneratorInputs,
+    inputs: &SimulatorInputs,
     boundary: &Polygon2,
     socket_directory: &str,
     minimum_valid_quality: u8,
@@ -174,7 +174,7 @@ fn sensor_processing_config(
             sensor.sensor_id
         ));
     }
-    let measurement = &inputs.generator.measurement;
+    let measurement = &inputs.simulator.measurement;
     Ok(json!({
         "sensor_id": sensor.sensor_id,
         "endpoint": endpoint,

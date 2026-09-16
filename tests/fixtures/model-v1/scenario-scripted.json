@@ -1,6 +1,6 @@
 {
   "comparison_class": "rng-independent",
-  "generator_overrides": {
+  "simulator_overrides": {
     "measurement": {
       "distance_noise": {
         "enabled": false
@@ -1561,7 +1561,7 @@
         "sensor_id": "lidar_2"
       }
     ],
-    "generator_overrides": {
+    "simulator_overrides": {
       "measurement": {
         "distance_noise": {
           "enabled": false

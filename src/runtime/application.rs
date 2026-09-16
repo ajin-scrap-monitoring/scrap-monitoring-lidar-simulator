@@ -16,10 +16,10 @@ use uuid::Uuid;
 
 use crate::{
     cli::RuntimeSettings,
-    configuration::GeneratorInputs,
+    configuration::SimulatorInputs,
     diagnostics::{
         BoundedDiagnosticsWriter, DiagnosticsError, DiagnosticsRecordInput,
-        DiagnosticsWriterConfig, generator_input_fingerprint,
+        DiagnosticsWriterConfig, simulator_input_fingerprint,
     },
     measurement::{MeasurementError, SystemScanFrameFactory},
     observation::{
@@ -390,8 +390,8 @@ struct ApplicationOutcome {
     edge_validation_report: Option<EdgeValidationReport>,
 }
 
-pub async fn run_generator_application(
-    inputs: GeneratorInputs,
+pub async fn run_simulator_application(
+    inputs: SimulatorInputs,
     settings: RuntimeSettings,
 ) -> Result<ApplicationSummary> {
     Ok(
@@ -403,7 +403,7 @@ pub async fn run_generator_application(
 
 #[cfg(feature = "edge-validation")]
 pub async fn run_edge_validation_application(
-    inputs: GeneratorInputs,
+    inputs: SimulatorInputs,
     settings: RuntimeSettings,
     validation: EdgeValidationSettings,
 ) -> Result<ApplicationSummary> {
@@ -422,7 +422,7 @@ pub async fn run_edge_validation_application(
 }
 
 async fn run_application(
-    inputs: GeneratorInputs,
+    inputs: SimulatorInputs,
     settings: RuntimeSettings,
     mode: ApplicationMode,
 ) -> Result<ApplicationOutcome> {
@@ -438,18 +438,18 @@ async fn run_application(
         .map_err(|_| GenerationRuntimeError::SensorSet)?;
     let run_id = Uuid::new_v4().to_string();
     let mut observation = if mode.publishes_observations() {
-        let fingerprint = generator_input_fingerprint(&inputs)?;
+        let fingerprint = simulator_input_fingerprint(&inputs)?;
         let observation_config = ObservationPublisherConfig::from_transport(
             settings.observation_host.clone(),
             settings.observation_port,
             settings.observation_interval_s,
-            &inputs.generator.observation_transport,
+            &inputs.simulator.observation_transport,
         )?;
         let observation_header = ObservationStreamHeader::new(
             inputs.environment.environment_id.clone(),
             run_id.clone(),
             fingerprint,
-            inputs.generator.seed,
+            inputs.simulator.seed,
             ObservationScene::from_inputs(&inputs)?,
         )?;
         ApplicationObservation::Actual(TcpObservationPublisher::new(
@@ -527,7 +527,7 @@ async fn run_application(
             return Err(error);
         }
     };
-    let mut diagnostics = if inputs.generator.diagnostics.enabled {
+    let mut diagnostics = if inputs.simulator.diagnostics.enabled {
         match DiagnosticsWriterConfig::from_inputs(&inputs, run_id.clone(), run_started_at_utc_us)
             .and_then(BoundedDiagnosticsWriter::start)
         {
@@ -544,7 +544,7 @@ async fn run_application(
 
     let diagnostic_batches = if diagnostics.is_some() {
         inputs
-            .generator
+            .simulator
             .diagnostics
             .sample_scan_limit_per_sensor
             .get()
@@ -562,7 +562,7 @@ async fn run_application(
             validation,
             generation_epoch_monotonic_ns,
             sensor_ids.clone(),
-            inputs.generator.measurement.rotation_rate_hz,
+            inputs.simulator.measurement.rotation_rate_hz,
         )
         .map(Box::new)
         .map(RunBoundary::EdgeValidation)

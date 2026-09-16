@@ -2,13 +2,13 @@
 
 ## 목적
 
-생성기는 기존 scan 전송과 별도로 현재 적재물 표면 모양과 시나리오 상태를 개발 장비에
-계속 전송한다. 일반 scan 데이터로 표면을 재구성하지 않고 생성기 내부의 읽기 전용
+시뮬레이터는 기존 scan 전송과 별도로 현재 적재물 표면 모양과 시나리오 상태를 개발 장비에
+계속 전송한다. 일반 scan 데이터로 표면을 재구성하지 않고 시뮬레이터 내부의 읽기 전용
 snapshot을 사용한다.
 
 ## 실행 경계
 
-관찰 publisher는 생성기와 함께 항상 실행한다. 기본 주기는 시뮬레이션 시각 1초이며
+관찰 publisher는 시뮬레이터와 함께 항상 실행한다. 기본 주기는 시뮬레이션 시각 1초이며
 전송 시각에만 현재 적재물 표면을 복사한다. 수신기 연결 실패, 느린 수신기와 관찰 전송
 오류는 scan 생성 및 기존 전송을 중단하거나 지연시키지 않는다.
 
@@ -35,7 +35,7 @@ wire 형식, 전달 의미와 field 의미는
 
 ## 실행
 
-생성기는 관찰 수신 endpoint를 명시적으로 받는다.
+시뮬레이터는 관찰 수신 endpoint를 명시적으로 받는다.
 
 | 인자 | 기본값 | 의미 |
 | --- | --- | --- |
@@ -45,7 +45,7 @@ wire 형식, 전달 의미와 field 의미는
 
 ```bash
 cargo run --locked -- run \
-  --config /path/to/generator.v2.json \
+  --config /path/to/simulator.v2.json \
   --grpc-socket-dir /run/lidar \
   --status-dir /status \
   --site-id example-site \
@@ -71,5 +71,5 @@ Repository가 담당한다. 생성된 JSON Lines, frame과 MP4는 기본적으�
 않는다. 구현 요구사항은 [`visualizer-requirements.md`](visualizer-requirements.md)에 둔다.
 
 실제 sensor 측정값, 품질 관측 원본, 운영 로그, 사설 주소와 자격 증명은 관찰 fixture와
-공개 문서에 포함하지 않는다. 관찰 stream에는 생성기 실행에 제공된 장면 설정이 들어가므로
+공개 문서에 포함하지 않는다. 관찰 stream에는 시뮬레이터 실행에 제공된 장면 설정이 들어가므로
 운영 network와 기록 파일의 접근 범위를 별도로 통제한다.

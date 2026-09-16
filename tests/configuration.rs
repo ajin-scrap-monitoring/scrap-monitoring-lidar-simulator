@@ -3,9 +3,9 @@ use std::{fs, path::Path};
 use scrap_monitoring_lidar_simulator::{
     MAX_INLET_POSITIONS,
     configuration::{
-        EnvironmentConfig, GeneratorConfig, QualityProfileConfig, load_environment,
-        load_generator_config, load_generator_inputs, load_quality_profile, parse_environment,
-        parse_generator_config, parse_quality_profile, strict_json::parse_document,
+        EnvironmentConfig, QualityProfileConfig, SimulatorConfig, load_environment,
+        load_quality_profile, load_simulator_config, load_simulator_inputs, parse_environment,
+        parse_quality_profile, parse_simulator_config, strict_json::parse_document,
         validate_inputs,
     },
     error::{ConfigurationError, ErrorKind},
@@ -13,12 +13,12 @@ use scrap_monitoring_lidar_simulator::{
 };
 use serde_json::{Value, json};
 
-const GENERATOR: &str = include_str!("../examples/generator.v2.json");
+const SIMULATOR: &str = include_str!("../examples/simulator.v2.json");
 const ENVIRONMENT: &str = include_str!("../examples/environment.v1.json");
 const QUALITY: &str = include_str!("../examples/quality-profile.v1.json");
 
-fn generator_with(pointer: &str, value: Value) -> String {
-    let mut document: Value = serde_json::from_str(GENERATOR).unwrap();
+fn simulator_with(pointer: &str, value: Value) -> String {
+    let mut document: Value = serde_json::from_str(SIMULATOR).unwrap();
     *document.pointer_mut(pointer).unwrap() = value;
     document.to_string()
 }
@@ -50,7 +50,7 @@ fn replace_fixture_value(document: &mut Value, path: &[Value], replacement: Valu
 fn parse_fixture(source: &str, document: &str) -> Result<(), ConfigurationError> {
     match source {
         "examples/environment.v1.json" => parse_environment(document).map(|_| ()),
-        "examples/generator.v2.json" => parse_generator_config(
+        "examples/simulator.v2.json" => parse_simulator_config(
             document,
             Path::new(env!("CARGO_MANIFEST_DIR")).join("examples"),
         )
@@ -116,7 +116,7 @@ fn normalized_environment(config: &EnvironmentConfig) -> Value {
     })
 }
 
-fn normalized_generator(config: &GeneratorConfig, root: &Path) -> Value {
+fn normalized_simulator(config: &SimulatorConfig, root: &Path) -> Value {
     let scenario = &config.scenario;
     let measurement = &config.measurement;
     let distortions = &measurement.distortions;
@@ -227,10 +227,10 @@ fn public_inputs_match_the_model_v1_normalized_fixture() {
         normalized["environment.v1.json"]
     );
 
-    let actual_generator = load_generator_config(root.join("examples/generator.v2.json")).unwrap();
+    let actual_simulator = load_simulator_config(root.join("examples/simulator.v2.json")).unwrap();
     assert_eq!(
-        normalized_generator(&actual_generator, root),
-        normalized["generator.v2.json"]
+        normalized_simulator(&actual_simulator, root),
+        normalized["simulator.v2.json"]
     );
 
     let actual_quality =
@@ -282,11 +282,11 @@ fn configuration_fixture_cases_match_acceptance_kind_and_path() {
 
 #[test]
 fn public_inputs_load_without_a_fixed_sample_array_contract() {
-    let inputs = load_generator_inputs(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+    let inputs = load_simulator_inputs(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
     )
     .unwrap();
-    assert_eq!(inputs.generator.seed, 123_456_789);
+    assert_eq!(inputs.simulator.seed, 123_456_789);
     assert_eq!(
         inputs
             .environment
@@ -296,8 +296,8 @@ fn public_inputs_load_without_a_fixed_sample_array_contract() {
             .collect::<Vec<_>>(),
         ["lidar_1", "lidar_2"]
     );
-    assert_eq!(inputs.generator.measurement.sample_rate_hz, 32_000.0);
-    assert_eq!(inputs.generator.measurement.rotation_rate_hz, 10.0);
+    assert_eq!(inputs.simulator.measurement.sample_rate_hz, 32_000.0);
+    assert_eq!(inputs.simulator.measurement.rotation_rate_hz, 10.0);
     for sensor in &inputs.quality_profile.sensors {
         assert_eq!(sensor.valid_distance_frequencies.len(), 256);
         assert!(
@@ -307,8 +307,8 @@ fn public_inputs_load_without_a_fixed_sample_array_contract() {
                 .any(|frequency| *frequency > 0)
         );
     }
-    let uneven = parse_generator_config(
-        &generator_with("/measurement/sample_rate_hz", json!(32_000.5)),
+    let uneven = parse_simulator_config(
+        &simulator_with("/measurement/sample_rate_hz", json!(32_000.5)),
         ".",
     )
     .unwrap();
@@ -316,14 +316,14 @@ fn public_inputs_load_without_a_fixed_sample_array_contract() {
 }
 
 #[test]
-fn generator_rejects_frames_above_the_processing_contract_limit() {
-    let mut document: Value = serde_json::from_str(GENERATOR).unwrap();
+fn simulator_rejects_frames_above_the_processing_contract_limit() {
+    let mut document: Value = serde_json::from_str(SIMULATOR).unwrap();
     document["measurement"]["rotation_rate_hz"] = json!(1.0);
     document["measurement"]["sample_rate_hz"] = json!(32_768.0);
-    assert!(parse_generator_config(&document.to_string(), ".").is_ok());
+    assert!(parse_simulator_config(&document.to_string(), ".").is_ok());
 
     document["measurement"]["sample_rate_hz"] = json!(32_768.000_000_000_01);
-    let error = parse_generator_config(&document.to_string(), ".").unwrap_err();
+    let error = parse_simulator_config(&document.to_string(), ".").unwrap_err();
     assert_eq!(error.kind, ErrorKind::Range);
     assert_eq!(error.path, "$.measurement.sample_rate_hz");
 }
@@ -353,7 +353,7 @@ fn strict_json_rejects_non_json_numbers_and_trailing_documents() {
 fn large_integer_and_float_types_remain_distinct() {
     for seed in [0, u64::MAX] {
         assert_eq!(
-            parse_generator_config(&generator_with("/seed", json!(seed)), ".")
+            parse_simulator_config(&simulator_with("/seed", json!(seed)), ".")
                 .unwrap()
                 .seed,
             seed
@@ -364,21 +364,21 @@ fn large_integer_and_float_types_remain_distinct() {
         (json!(1.0), ErrorKind::Type),
         (json!(-1), ErrorKind::Range),
     ] {
-        let error = parse_generator_config(&generator_with("/seed", seed), ".").unwrap_err();
+        let error = parse_simulator_config(&simulator_with("/seed", seed), ".").unwrap_err();
         assert_eq!(error.path, "$.seed");
         assert_eq!(error.kind, kind);
     }
-    let beyond_u64 = GENERATOR.replace("123456789", "18446744073709551616");
-    let error = parse_generator_config(&beyond_u64, ".").unwrap_err();
+    let beyond_u64 = SIMULATOR.replace("123456789", "18446744073709551616");
+    let error = parse_simulator_config(&beyond_u64, ".").unwrap_err();
     assert_eq!(error.kind, ErrorKind::Range);
     assert_eq!(error.path, "$.seed");
-    assert!(parse_generator_config(&generator_with("/config_version", json!(2.0)), ".").is_ok());
+    assert!(parse_simulator_config(&simulator_with("/config_version", json!(2.0)), ".").is_ok());
 }
 
 #[test]
 fn diagnostic_limit_enforces_the_public_resource_bound() {
-    let maximum = parse_generator_config(
-        &generator_with("/diagnostics/sample_scan_limit_per_sensor", json!(16)),
+    let maximum = parse_simulator_config(
+        &simulator_with("/diagnostics/sample_scan_limit_per_sensor", json!(16)),
         ".",
     )
     .unwrap();
@@ -390,16 +390,16 @@ fn diagnostic_limit_enforces_the_public_resource_bound() {
         json!(17),
         serde_json::from_str("184467440737095516160").unwrap(),
     ] {
-        let error = parse_generator_config(
-            &generator_with("/diagnostics/sample_scan_limit_per_sensor", invalid),
+        let error = parse_simulator_config(
+            &simulator_with("/diagnostics/sample_scan_limit_per_sensor", invalid),
             ".",
         )
         .unwrap_err();
         assert_eq!(error.kind, ErrorKind::Range);
         assert_eq!(error.path, "$.diagnostics.sample_scan_limit_per_sensor");
     }
-    let zero = parse_generator_config(
-        &generator_with("/diagnostics/sample_scan_limit_per_sensor", json!(0)),
+    let zero = parse_simulator_config(
+        &simulator_with("/diagnostics/sample_scan_limit_per_sensor", json!(0)),
         ".",
     )
     .unwrap();
@@ -407,18 +407,18 @@ fn diagnostic_limit_enforces_the_public_resource_bound() {
 }
 
 #[test]
-fn relative_paths_are_resolved_against_the_generator_file() {
-    let generator = parse_generator_config(GENERATOR, "/input/config").unwrap();
+fn relative_paths_are_resolved_against_the_simulator_file() {
+    let simulator = parse_simulator_config(SIMULATOR, "/input/config").unwrap();
     assert_eq!(
-        generator.environment_path,
+        simulator.environment_path,
         Path::new("/input/config/environment.v1.json")
     );
     assert_eq!(
-        generator.quality_profile_path,
+        simulator.quality_profile_path,
         Path::new("/input/config/quality-profile.v1.json")
     );
-    let absolute = parse_generator_config(
-        &generator_with("/environment_path", json!("/shared/environment.json")),
+    let absolute = parse_simulator_config(
+        &simulator_with("/environment_path", json!("/shared/environment.json")),
         "/input/config",
     )
     .unwrap();
@@ -429,7 +429,7 @@ fn relative_paths_are_resolved_against_the_generator_file() {
 }
 
 #[test]
-fn every_generator_section_enforces_semantic_bounds() {
+fn every_simulator_section_enforces_semantic_bounds() {
     for (pointer, value) in [
         ("/scenario/mean_fill_duration_s", json!(0)),
         ("/scenario/fill_duration_factor_range", json!([0.8, 1.3])),
@@ -481,7 +481,7 @@ fn every_generator_section_enforces_semantic_bounds() {
         ("/diagnostics/output_path", json!("")),
     ] {
         assert!(
-            parse_generator_config(&generator_with(pointer, value), ".").is_err(),
+            parse_simulator_config(&simulator_with(pointer, value), ".").is_err(),
             "accepted {pointer}"
         );
     }
@@ -490,27 +490,27 @@ fn every_generator_section_enforces_semantic_bounds() {
             .map(|index| json!([index, 0]))
             .collect(),
     );
-    let error = parse_generator_config(
-        &generator_with("/scenario/inlet_positions_xy_m", excessive_inlets),
+    let error = parse_simulator_config(
+        &simulator_with("/scenario/inlet_positions_xy_m", excessive_inlets),
         ".",
     )
     .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Range);
     assert_eq!(error.path, "$.scenario.inlet_positions_xy_m");
-    let overflow = GENERATOR.replace("86400", "1e999");
-    let error = parse_generator_config(&overflow, ".").unwrap_err();
+    let overflow = SIMULATOR.replace("86400", "1e999");
+    let error = parse_simulator_config(&overflow, ".").unwrap_err();
     assert_eq!(error.path, "$.scenario.mean_fill_duration_s");
     assert_eq!(error.kind, ErrorKind::Range);
 }
 
 #[test]
 fn exact_fields_are_required_in_all_input_documents() {
-    let mut generator: Value = serde_json::from_str(GENERATOR).unwrap();
-    generator["measurement"]
+    let mut simulator: Value = serde_json::from_str(SIMULATOR).unwrap();
+    simulator["measurement"]
         .as_object_mut()
         .unwrap()
         .remove("sample_rate_hz");
-    let error = parse_generator_config(&generator.to_string(), ".").unwrap_err();
+    let error = parse_simulator_config(&simulator.to_string(), ".").unwrap_err();
     assert_eq!(error.kind, ErrorKind::MissingField);
     assert_eq!(error.path, "$.measurement");
     let mut environment: Value = serde_json::from_str(ENVIRONMENT).unwrap();
@@ -611,8 +611,8 @@ fn quality_keys_counts_and_input_sensor_sets_are_strict() {
         document["sensors"][0]["valid_distance_frequencies"] = frequency;
         assert!(parse_quality_profile(&document.to_string()).is_err());
     }
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json");
-    let inputs = load_generator_inputs(&path).unwrap();
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json");
+    let inputs = load_simulator_inputs(&path).unwrap();
     let mut changed = inputs.clone();
     changed.environment.sensors.pop();
     assert_eq!(
@@ -626,7 +626,7 @@ fn quality_keys_counts_and_input_sensor_sets_are_strict() {
         ErrorKind::CrossInput
     );
     let mut changed = inputs;
-    changed.generator.scenario.inlet_positions_xy_m = vec![[1_000_000.0, 1_000_000.0]];
+    changed.simulator.scenario.inlet_positions_xy_m = vec![[1_000_000.0, 1_000_000.0]];
     assert_eq!(
         validate_inputs(&changed).unwrap_err().kind,
         ErrorKind::CrossInput

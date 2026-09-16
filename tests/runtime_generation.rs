@@ -1,11 +1,11 @@
 use std::path::Path;
 
 use scrap_monitoring_lidar_simulator::{
-    configuration::load_generator_inputs, runtime::GenerationRuntime, scenario::ScenarioPhase,
+    configuration::load_simulator_inputs, runtime::GenerationRuntime, scenario::ScenarioPhase,
 };
 
-fn inputs() -> scrap_monitoring_lidar_simulator::configuration::GeneratorInputs {
-    load_generator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"))
+fn inputs() -> scrap_monitoring_lidar_simulator::configuration::SimulatorInputs {
+    load_simulator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"))
         .unwrap()
 }
 
@@ -70,29 +70,29 @@ fn worker_scheduling_is_deterministic_across_independent_runtimes() {
 #[test]
 fn generation_batches_expose_every_phase_and_cycle_transition_without_a_surface() {
     let mut inputs = inputs();
-    inputs.generator.scenario.mean_fill_duration_s = 3.0;
-    inputs.generator.measurement.sample_rate_hz = 100.0;
-    inputs.generator.measurement.rotation_rate_hz = 10.0;
+    inputs.simulator.scenario.mean_fill_duration_s = 3.0;
+    inputs.simulator.measurement.sample_rate_hz = 100.0;
+    inputs.simulator.measurement.rotation_rate_hz = 10.0;
     inputs
-        .generator
+        .simulator
         .measurement
         .distortions
         .falling_material
         .enabled = false;
-    inputs.generator.measurement.distortions.voids.enabled = false;
+    inputs.simulator.measurement.distortions.voids.enabled = false;
     inputs
-        .generator
+        .simulator
         .measurement
         .distortions
         .collection_occlusion
         .enabled = false;
     inputs
-        .generator
+        .simulator
         .measurement
         .distortions
         .reflection_error
         .enabled = false;
-    inputs.generator.measurement.distortions.dropout.enabled = false;
+    inputs.simulator.measurement.distortions.dropout.enabled = false;
     let mut runtime = GenerationRuntime::from_inputs(&inputs).unwrap();
     let mut transitions = Vec::new();
 

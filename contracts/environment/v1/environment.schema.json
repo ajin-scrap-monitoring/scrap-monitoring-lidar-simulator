@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-generator/contracts/environment/v1/environment.schema.json",
+  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-simulator/contracts/environment/v1/environment.schema.json",
   "title": "LiDAR environment configuration v1",
   "type": "object",
   "additionalProperties": false,

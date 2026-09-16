@@ -64,21 +64,21 @@ directory만 관리한다.
 | --- | --- |
 | 시뮬레이터 image | Release digest |
 | 공개 합성 JSON 3개 | read-only bind mount |
-| 생성기 실행 설정 | 장비별 `.env` |
+| 시뮬레이터 실행 설정 | 장비별 `.env` |
 | 합성 처리 설정 | exporter가 만든 JSON의 read-only bind mount |
-| scan UDS directory | 생성기와 `lidar-processing`의 공용 bind mount |
-| 상태 directory | 생성기와 상태 수집기의 공용 bind mount |
+| scan UDS directory | 시뮬레이터와 `lidar-processing`의 공용 bind mount |
+| 상태 directory | 시뮬레이터와 상태 수집기의 공용 bind mount |
 | 진단 directory | 선택적 writable bind mount |
 
-관찰 수신 프로그램은 별도 장비에서 TCP server를 연다. 생성기 `.env`의 관찰 host와 port가
+관찰 수신 프로그램은 별도 장비에서 TCP server를 연다. 시뮬레이터 `.env`의 관찰 host와 port가
 해당 endpoint를 가리킨다. scan 통신은 같은 edge host의 UDS이므로 Docker network와 TCP
 port가 필요하지 않다.
 
 ## 합성 검증용 처리 설정 준비
 
-`lidar-processing`은 생성기의 합성 환경 JSON을 직접 읽지 않는다. 검증 제어 장비에서 Release
+`lidar-processing`은 시뮬레이터의 합성 환경 JSON을 직접 읽지 않는다. 검증 제어 장비에서 Release
 source의 Rust exporter를 실행해 공개 합성 환경에 대응하는 처리 JSON을 만든다. 먼저 환경
-파일의 `<...>` placeholder와 `visualizer.example`을 검증 환경의 값으로 바꾼다.
+파일의 `replace-with-...` placeholder와 `visualizer.example`을 검증 환경의 값으로 바꾼다.
 
 ```bash
 RUN_ENV="$RELEASE_DIR/simulator.env"
@@ -91,7 +91,7 @@ set +a
 
 cargo run --manifest-path "$RELEASE_SOURCE/Cargo.toml" --locked --release -- \
   export-synthetic-processing-config \
-  --generator-config "$RELEASE_SOURCE/examples/generator.v2.json" \
+  --simulator-config "$RELEASE_SOURCE/examples/simulator.v2.json" \
   --socket-dir /sockets \
   --site-id "$SITE_ID" \
   --edge-id "$EDGE_ID" \
@@ -99,13 +99,13 @@ cargo run --manifest-path "$RELEASE_SOURCE/Cargo.toml" --locked --release -- \
   --output "$RELEASE_DIR/processing.synthetic.json"
 ```
 
-생성기와 처리 설정의 `SITE_ID`, `EDGE_ID`, `CONFIG_REVISION`은 같아야 한다. 출력은 공개 합성
+시뮬레이터와 처리 설정의 `SITE_ID`, `EDGE_ID`, `CONFIG_REVISION`은 같아야 한다. 출력은 공개 합성
 환경의 검증에만 사용한다. exporter는 실제 현장 설정을 입력받거나 운영 보정값을 만들지 않는다.
 
 검증 제어 장비는 다음 6개 파일을 엣지의 새 전달 directory에 복사한다.
 
 - `RELEASE_SOURCE/examples/environment.v1.json`
-- `RELEASE_SOURCE/examples/generator.v2.json`
+- `RELEASE_SOURCE/examples/simulator.v2.json`
 - `RELEASE_SOURCE/examples/quality-profile.v1.json`
 - `RUN_ENV`의 `simulator.env`
 - `RELEASE_DIR/processing.synthetic.json`
@@ -120,18 +120,22 @@ cargo run --manifest-path "$RELEASE_SOURCE/Cargo.toml" --locked --release -- \
 ```bash
 CONFIG_DIR=/opt/ajin/config/lidar-simulator
 PROCESSING_CONFIG_DIR=/opt/ajin/config/lidar-processing
-SOCKET_DIR=/opt/ajin/runtime/sockets/lidar-simulator
 STATUS_DIR=/opt/ajin/runtime/status
 DIAGNOSTICS_DIR=/opt/ajin/runtime/diagnostics/lidar-simulator
 TRANSFER_DIR=/path/to/transferred-release-source
 IMAGE_REF="$(sed -n '1p' "$TRANSFER_DIR/oci-image.txt")"
+
+set -a
+. "$TRANSFER_DIR/simulator.env"
+set +a
+: "${SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR:?set SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR in simulator.env}"
 
 sudo docker image pull "$IMAGE_REF"
 
 sudo install -d -m 0755 "$CONFIG_DIR" "$PROCESSING_CONFIG_DIR"
 sudo install -m 0644 \
   "$TRANSFER_DIR/examples/environment.v1.json" \
-  "$TRANSFER_DIR/examples/generator.v2.json" \
+  "$TRANSFER_DIR/examples/simulator.v2.json" \
   "$TRANSFER_DIR/examples/quality-profile.v1.json" \
   "$CONFIG_DIR/"
 sudo install -m 0644 \
@@ -139,7 +143,7 @@ sudo install -m 0644 \
   "$PROCESSING_CONFIG_DIR/processing.synthetic.json"
 sudo install -d -m 0755 "$STATUS_DIR"
 sudo install -d -o 10001 -g 10001 -m 0770 \
-  "$SOCKET_DIR" \
+  "$SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR" \
   "$STATUS_DIR/lidar-driver-a" \
   "$STATUS_DIR/lidar-driver-b" \
   "$DIAGNOSTICS_DIR"
@@ -151,13 +155,13 @@ sudoedit /etc/scrap-monitoring-lidar-simulator.env
 다음 container 경로는 mount 대상과 일치해야 한다.
 
 ```text
-SCRAP_LIDAR_GENERATOR_CONFIG=/config/generator.v2.json
-SCRAP_LIDAR_GENERATOR_GRPC_SOCKET_DIR=/run/lidar
-SCRAP_LIDAR_GENERATOR_STATUS_DIR=/status
-SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_OUTPUT_PATH=/data/diagnostics
+SCRAP_LIDAR_SIMULATOR_CONFIG=/config/simulator.v2.json
+SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_DIR=/run/lidar
+SCRAP_LIDAR_SIMULATOR_STATUS_DIR=/status
+SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_OUTPUT_PATH=/data/diagnostics
 ```
 
-환경변수 전체 목록과 역할은 [`configuration.md`](configuration.md)가 정본이다. 현재 생성기
+환경변수 전체 목록과 역할은 [`configuration.md`](configuration.md)가 정본이다. 현재 시뮬레이터
 계약에는 자격 증명이 없으므로 `.env`와 Docker secret에 자격 증명을 추가하지 않는다.
 
 최종 `processing.synthetic.json`은 검증용 `lidar-processing`에 read-only로 mount한다. 처리
@@ -168,7 +172,7 @@ CONFIG_SHA256="$(sha256sum \
   "$PROCESSING_CONFIG_DIR/processing.synthetic.json" | awk '{print $1}')"
 ```
 
-## 생성기 실행
+## 시뮬레이터 실행
 
 ```bash
 sudo docker run --detach \
@@ -182,26 +186,31 @@ sudo docker run --detach \
   --log-opt max-file=3 \
   --env-file /etc/scrap-monitoring-lidar-simulator.env \
   --mount type=bind,src="$CONFIG_DIR",dst=/config,readonly \
-  --mount type=bind,src="$SOCKET_DIR",dst=/run/lidar \
+  --mount type=bind,src="$SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR",dst=/run/lidar \
   --mount type=bind,src="$STATUS_DIR/lidar-driver-a",dst=/status/lidar-driver-a \
   --mount type=bind,src="$STATUS_DIR/lidar-driver-b",dst=/status/lidar-driver-b \
   --mount type=bind,src="$DIAGNOSTICS_DIR",dst=/data/diagnostics \
   "$IMAGE_REF"
 ```
 
-진단을 사용하지 않으면 `SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_ENABLED=false`로 지정하고 진단
+진단을 사용하지 않으면 `SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_ENABLED=false`로 지정하고 진단
 mount를 생략할 수 있다. Docker Engine의 `--cpus`와 `--memory`는 장비 검증에서 확정한 값만
 적용한다. Repository는 다른 edge process와 함께 측정하기 전에 검증 자원 상한을 정하지 않는다.
 
-`lidar-processing` container는 같은 host `SOCKET_DIR`을 `/sockets`에 mount한다. 처리 JSON의
-endpoint는 `unix:/sockets/lidar_1.sock`과 `unix:/sockets/lidar_2.sock`이다. 같은 UID와 GID를
-사용하므로 생성기가 mode 0660으로 만든 socket에 연결할 수 있다.
+`lidar-processing` container는 같은 `SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR`을 `/sockets`에 mount한다.
+
+```bash
+--mount type=bind,src="$SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR",dst=/sockets
+```
+
+처리 JSON의 endpoint는 `unix:/sockets/lidar_1.sock`과 `unix:/sockets/lidar_2.sock`이다. 같은 UID와 GID를
+사용하므로 시뮬레이터가 mode 0660으로 만든 socket에 연결할 수 있다.
 
 ## 생명주기와 실행 확인
 
-생성기는 구독자가 없어도 두 sensor의 scan을 계속 만들고 최신 frame 2개를 갱신한다. 처리
+시뮬레이터는 구독자가 없어도 두 sensor의 scan을 계속 만들고 최신 frame 2개를 갱신한다. 처리
 container가 나중에 연결하면 연결 이후의 최신 frame부터 받는다. gRPC 구독 재연결은 적재
-모델을 초기화하지 않는다. 생성기 process 재시작만 새 빈 적재 모델, 새 `instance_id`와
+모델을 초기화하지 않는다. 시뮬레이터 process 재시작만 새 빈 적재 모델, 새 `instance_id`와
 sequence 1을 만든다.
 
 SIGTERM은 생성, 관찰 publisher, 상태 writer와 gRPC server를 순서대로 종료한다. 정상 종료는
@@ -213,7 +222,7 @@ sudo docker container inspect scrap-monitoring-lidar-simulator \
   --format '{{.State.Status}} {{.State.ExitCode}} {{.Image}}'
 sudo docker logs --tail 20 scrap-monitoring-lidar-simulator
 sudo docker image inspect "$IMAGE_REF" --format '{{index .RepoDigests 0}}'
-sudo find "$SOCKET_DIR" "$STATUS_DIR" -maxdepth 2 \( -type f -o -type s \)
+sudo find "$SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR" "$STATUS_DIR" -maxdepth 2 \( -type f -o -type s \)
 ```
 
 정상 실행은 `lidar_1.sock`, `lidar_2.sock`,

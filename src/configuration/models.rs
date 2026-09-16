@@ -1,4 +1,4 @@
-//! Validated generator inputs in world coordinates and SI lengths.
+//! Validated simulator inputs in world coordinates and SI lengths.
 
 use std::path::PathBuf;
 
@@ -159,7 +159,7 @@ pub struct ObservationTransportConfig {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeneratorConfig {
+pub struct SimulatorConfig {
     pub seed: u64,
     pub environment_path: PathBuf,
     pub quality_profile_path: PathBuf,
@@ -182,8 +182,8 @@ pub struct QualityProfileConfig {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct GeneratorInputs {
-    pub generator: GeneratorConfig,
+pub struct SimulatorInputs {
+    pub simulator: SimulatorConfig,
     pub environment: EnvironmentConfig,
     pub quality_profile: QualityProfileConfig,
 }
