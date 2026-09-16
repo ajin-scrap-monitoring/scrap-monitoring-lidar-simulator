@@ -24,7 +24,7 @@ import grpc
 _ROOT = Path(__file__).parents[1]
 _SOURCE = _ROOT / "contracts" / "lidar" / "v1" / "upstream.json"
 _PROTO = _ROOT / "contracts" / "lidar" / "v1" / "lidar.proto"
-_GENERATOR_CONFIG = _ROOT / "examples" / "generator.v2.json"
+_SIMULATOR_CONFIG = _ROOT / "examples" / "simulator.v2.json"
 _PROCESSING_FIXTURE = _ROOT / "edge-platform-integration" / "v1" / "processing.synthetic.json"
 _SENSOR_IDS = ("lidar_1", "lidar_2")
 _EDGE_ID = "synthetic-edge"
@@ -57,16 +57,16 @@ _DEPLOYMENT_ENVIRONMENT = (
     "DEPLOYMENT_REVISION",
     "CAMERA_ID",
     "CONFIG_SHA256",
-    "SCRAP_LIDAR_GENERATOR_CONFIG",
-    "SCRAP_LIDAR_GENERATOR_GRPC_SOCKET_DIR",
-    "SCRAP_LIDAR_GENERATOR_STATUS_DIR",
-    "SCRAP_LIDAR_GENERATOR_OBSERVATION_HOST",
-    "SCRAP_LIDAR_GENERATOR_OBSERVATION_PORT",
-    "SCRAP_LIDAR_GENERATOR_OBSERVATION_INTERVAL_S",
-    "SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_ENABLED",
-    "SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_OUTPUT_PATH",
-    "SCRAP_LIDAR_GENERATOR_MEAN_FILL_DURATION_S",
-    "SCRAP_LIDAR_GENERATOR_COLLECTION_THRESHOLD_CENTER_RATIO",
+    "SCRAP_LIDAR_SIMULATOR_CONFIG",
+    "SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_DIR",
+    "SCRAP_LIDAR_SIMULATOR_STATUS_DIR",
+    "SCRAP_LIDAR_SIMULATOR_OBSERVATION_HOST",
+    "SCRAP_LIDAR_SIMULATOR_OBSERVATION_PORT",
+    "SCRAP_LIDAR_SIMULATOR_OBSERVATION_INTERVAL_S",
+    "SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_ENABLED",
+    "SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_OUTPUT_PATH",
+    "SCRAP_LIDAR_SIMULATOR_MEAN_FILL_DURATION_S",
+    "SCRAP_LIDAR_SIMULATOR_COLLECTION_THRESHOLD_CENTER_RATIO",
 )
 
 
@@ -81,7 +81,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime-binary", required=True, type=Path)
     parser.add_argument("--edge-platform-root", required=True, type=Path)
-    parser.add_argument("--generator-config", default=_GENERATOR_CONFIG, type=Path)
+    parser.add_argument("--simulator-config", default=_SIMULATOR_CONFIG, type=Path)
     parser.add_argument("--startup-timeout-s", default=15.0, type=_positive_seconds)
     parser.add_argument("--validation-timeout-s", default=15.0, type=_positive_seconds)
     return parser
@@ -148,15 +148,15 @@ async def _completed_process(command: list[str]) -> tuple[int, str, str]:
 
 async def _export_processing_config(
     binary: Path,
-    generator_config: Path,
+    simulator_config: Path,
     socket_directory: Path,
     output: Path,
 ) -> dict[str, Any]:
     command = [
         str(binary),
         "export-synthetic-processing-config",
-        "--generator-config",
-        str(generator_config),
+        "--simulator-config",
+        str(simulator_config),
         "--socket-dir",
         str(socket_directory),
         "--site-id",
@@ -545,7 +545,7 @@ def _summary_values(stdout: str) -> tuple[dict[str, str], dict[str, str], dict[s
 async def _verify_runtime(arguments: argparse.Namespace) -> dict[str, object]:
     binary = arguments.runtime_binary.resolve(strict=True)
     edge_root = arguments.edge_platform_root.resolve(strict=True)
-    generator_config = arguments.generator_config.resolve(strict=True)
+    simulator_config = arguments.simulator_config.resolve(strict=True)
     _require(binary.is_file() and os.access(binary, os.X_OK), "runtime binary is not executable")
     _verify_source(edge_root)
     load_config, engine_type, lidar_pb2, lidar_pb2_grpc = _load_upstream_modules(edge_root)
@@ -556,7 +556,7 @@ async def _verify_runtime(arguments: argparse.Namespace) -> dict[str, object]:
         status_directory = root / "status"
         processing_path = root / "processing.json"
         generated = await _export_processing_config(
-            binary, generator_config, socket_directory, processing_path
+            binary, simulator_config, socket_directory, processing_path
         )
         engine = _processing_engine(load_config, engine_type, processing_path)
         _require(
@@ -573,7 +573,7 @@ async def _verify_runtime(arguments: argparse.Namespace) -> dict[str, object]:
             str(binary),
             "run",
             "--config",
-            str(generator_config),
+            str(simulator_config),
             "--grpc-socket-dir",
             str(socket_directory),
             "--status-dir",

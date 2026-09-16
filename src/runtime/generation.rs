@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    configuration::{GeneratorInputs, SensorConfig},
+    configuration::{SensorConfig, SimulatorInputs},
     geometry::{GeometryError, Polygon2, Vec2, Vec3},
     measurement::{
         CollectionOcclusionSettings, DistortionInterval, DropoutSettings, EnvironmentScene,
@@ -121,7 +121,7 @@ pub struct GenerationRuntime {
 }
 
 impl GenerationRuntime {
-    pub fn from_inputs(inputs: &GeneratorInputs) -> Result<Self> {
+    pub fn from_inputs(inputs: &SimulatorInputs) -> Result<Self> {
         if inputs.environment.sensors.len() != 2
             || inputs.environment.sensors[0].sensor_id == inputs.environment.sensors[1].sensor_id
         {
@@ -411,18 +411,18 @@ impl Drop for GenerationRuntime {
 }
 
 fn start_sensor_worker(
-    inputs: &GeneratorInputs,
+    inputs: &SimulatorInputs,
     sensor: &SensorConfig,
     ordinal: usize,
     scene: Arc<EnvironmentScene>,
     snapshots: &SnapshotEventCoordinator,
 ) -> Result<SensorCoordinator> {
-    let measurement = &inputs.generator.measurement;
+    let measurement = &inputs.simulator.measurement;
     let mut scheduler = create_seeded_rotation_scheduler(
         sensor.sensor_id.clone(),
         measurement.sample_rate_hz,
         measurement.rotation_rate_hz,
-        inputs.generator.seed,
+        inputs.simulator.seed,
     )?;
     let pending = scheduler.next_scan()?;
     let mut scanner = ReferenceScanner::new(
@@ -512,7 +512,7 @@ fn shutdown_sensor_workers(sensors: &mut [SensorCoordinator]) {
     }
 }
 
-fn build_environment_scene(inputs: &GeneratorInputs) -> Result<EnvironmentScene> {
+fn build_environment_scene(inputs: &SimulatorInputs) -> Result<EnvironmentScene> {
     Ok(EnvironmentScene::new(
         boundary(inputs)?,
         inputs.environment.floor_z_m,
@@ -530,17 +530,17 @@ fn sensor_frame(sensor: &SensorConfig) -> Result<SensorFrame> {
 }
 
 fn measurement_generator(
-    inputs: &GeneratorInputs,
+    inputs: &SimulatorInputs,
     sensor_id: &str,
 ) -> Result<MeasurementGenerator> {
-    let measurement = &inputs.generator.measurement;
+    let measurement = &inputs.simulator.measurement;
     let quality = inputs
         .quality_profile
         .sensors
         .iter()
         .find(|quality| quality.sensor_id == sensor_id)
         .ok_or(GenerationRuntimeError::SensorConfiguration)?;
-    let time_scale = scenario_time_scale(inputs.generator.scenario.mean_fill_duration_s)?;
+    let time_scale = scenario_time_scale(inputs.simulator.scenario.mean_fill_duration_s)?;
     let dropout = &measurement.distortions.dropout;
     Ok(MeasurementGenerator::new(
         MeasurementSettings {
@@ -574,23 +574,23 @@ fn measurement_generator(
                 })
                 .transpose()?,
         },
-        inputs.generator.seed,
+        inputs.simulator.seed,
     )?)
 }
 
 fn build_spatial_timeline(
-    inputs: &GeneratorInputs,
+    inputs: &SimulatorInputs,
     static_scene: EnvironmentScene,
 ) -> Result<Option<SpatialDistortionTimeline>> {
-    let generator = &inputs.generator;
-    let distortions = &generator.measurement.distortions;
+    let simulator = &inputs.simulator;
+    let distortions = &simulator.measurement.distortions;
     if !distortions.falling_material.enabled
         && !distortions.voids.enabled
         && !distortions.collection_occlusion.enabled
     {
         return Ok(None);
     }
-    let time_scale = scenario_time_scale(generator.scenario.mean_fill_duration_s)?;
+    let time_scale = scenario_time_scale(simulator.scenario.mean_fill_duration_s)?;
     let falling = &distortions.falling_material;
     let voids = &distortions.voids;
     let collection = &distortions.collection_occlusion;
@@ -609,14 +609,14 @@ fn build_spatial_timeline(
                     radius_m_range: falling.radius_m_range,
                     duration_s_range: scale_duration_range(falling.duration_s_range, time_scale)?,
                     distance_reduction_m_range: falling.distance_reduction_m_range,
-                    inlet_positions: generator
+                    inlet_positions: simulator
                         .scenario
                         .inlet_positions_xy_m
                         .iter()
                         .copied()
                         .map(Vec2::try_from)
                         .collect::<std::result::Result<Vec<_>, _>>()?,
-                    placement_radius_m: generator.scenario.surface.pile_spread_radius_m,
+                    placement_radius_m: simulator.scenario.surface.pile_spread_radius_m,
                 })
             })
             .transpose()?,
@@ -649,12 +649,12 @@ fn build_spatial_timeline(
                 })
             })
             .transpose()?,
-        generator.seed,
+        simulator.seed,
     )?;
     Ok(Some(timeline))
 }
 
-fn boundary(inputs: &GeneratorInputs) -> Result<Polygon2> {
+fn boundary(inputs: &SimulatorInputs) -> Result<Polygon2> {
     Ok(Polygon2::new(
         inputs
             .environment
@@ -670,13 +670,13 @@ fn boundary(inputs: &GeneratorInputs) -> Result<Polygon2> {
 mod tests {
     use std::{path::Path, sync::mpsc::TryRecvError};
 
-    use crate::configuration::load_generator_inputs;
+    use crate::configuration::load_simulator_inputs;
 
     use super::{GenerationRuntime, GenerationRuntimeError, WorkerCommand};
 
-    fn inputs() -> crate::configuration::GeneratorInputs {
-        load_generator_inputs(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"),
+    fn inputs() -> crate::configuration::SimulatorInputs {
+        load_simulator_inputs(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"),
         )
         .unwrap()
     }
@@ -708,10 +708,10 @@ mod tests {
     #[test]
     fn one_batch_enforces_the_scenario_event_limit_atomically() {
         let mut inputs = inputs();
-        inputs.generator.scenario.surface.cell_size_m = 1.0;
-        inputs.generator.scenario.surface.update_interval_s = 1.0 / 4_097.0;
-        inputs.generator.measurement.sample_rate_hz = 4_096.0;
-        inputs.generator.measurement.rotation_rate_hz = 1.0;
+        inputs.simulator.scenario.surface.cell_size_m = 1.0;
+        inputs.simulator.scenario.surface.update_interval_s = 1.0 / 4_097.0;
+        inputs.simulator.measurement.sample_rate_hz = 4_096.0;
+        inputs.simulator.measurement.rotation_rate_hz = 1.0;
         let mut runtime = GenerationRuntime::from_inputs(&inputs).unwrap();
 
         assert!(matches!(

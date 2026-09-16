@@ -2,7 +2,7 @@ use std::f64::consts::TAU;
 
 use crate::{
     MAX_INLET_POSITIONS,
-    configuration::{GeneratorInputs, ScenarioConfig},
+    configuration::{ScenarioConfig, SimulatorInputs},
     geometry::{Polygon2, Vec2},
     randomness::{ModelRng, RandomSource, StreamScope},
     rate_profile::{SmoothRateProfile, create_smooth_rate_profile},
@@ -684,7 +684,7 @@ impl ScenarioSimulator {
     }
 }
 
-pub fn build_scenario_simulator(inputs: &GeneratorInputs) -> Result<ScenarioSimulator> {
+pub fn build_scenario_simulator(inputs: &SimulatorInputs) -> Result<ScenarioSimulator> {
     let boundary = Polygon2::new(
         inputs
             .environment
@@ -698,10 +698,10 @@ pub fn build_scenario_simulator(inputs: &GeneratorInputs) -> Result<ScenarioSimu
         boundary,
         inputs.environment.floor_z_m,
         inputs.environment.top_z_m,
-        inputs.generator.scenario.surface.cell_size_m,
+        inputs.simulator.scenario.surface.cell_size_m,
     )?;
-    let settings = ScenarioSettings::from_config(&inputs.generator.scenario)?;
-    ScenarioSimulator::new(surface, settings, inputs.generator.seed)
+    let settings = ScenarioSettings::from_config(&inputs.simulator.scenario)?;
+    ScenarioSimulator::new(surface, settings, inputs.simulator.seed)
 }
 
 fn require_phase_end(started_at_s: f64, duration_s: f64) -> Result<()> {

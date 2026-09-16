@@ -1,18 +1,18 @@
 //! Versioned public input loading and cross-input validation.
 
 mod environment;
-mod generator;
 mod models;
 mod polygon;
 mod quality;
+mod simulator;
 pub mod strict_json;
 
 pub use environment::{load_environment, parse_environment};
-pub use generator::{
-    load_generator_config, load_generator_inputs, parse_generator_config, validate_inputs,
-};
 pub use models::*;
 pub use quality::{load_quality_profile, parse_quality_profile};
+pub use simulator::{
+    load_simulator_config, load_simulator_inputs, parse_simulator_config, validate_inputs,
+};
 
 pub(crate) fn compensated_sum(values: impl IntoIterator<Item = f64>) -> f64 {
     let mut values = values.into_iter();

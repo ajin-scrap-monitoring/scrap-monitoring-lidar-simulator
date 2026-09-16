@@ -14,7 +14,7 @@
 
 시뮬레이터는 하나의 적재 모델에서 정확히 2개 sensor scan을 만들고 sensor별
 gRPC(Google Remote Procedure Call) over UDS(Unix Domain Socket) endpoint를 제공한다.
-`lidar-processing`은 생성기의 환경 JSON을 직접 읽지 않으며 exporter가 같은 공개 합성 환경에서
+`lidar-processing`은 시뮬레이터의 환경 JSON을 직접 읽지 않으며 exporter가 같은 공개 합성 환경에서
 처리 설정을 만든다.
 
 실행 구현은 Rust `src/` 하나다. Python은 계약 검사와 합성 환경 문서 생성 자동화에만 사용한다.
@@ -22,7 +22,7 @@ ARM64 OCI(Open Container Initiative) image에는 정적으로 link한 Rust 실�
 고지만 포함한다.
 
 Raspberry Pi 5 연계 검증은 두 sensor의 기준 광선 구성, scan sequence, 처리 높이와 적재율 추세,
-생성기 자원 및 생명주기를 실제 `lidar-processing` 실행 결과와 함께 확인했다. 조건과 관측값은
+시뮬레이터 자원 및 생명주기를 실제 `lidar-processing` 실행 결과와 함께 확인했다. 조건과 관측값은
 [`performance.md`](performance.md)가 정본이다.
 
 ## 채택한 구조
@@ -82,16 +82,16 @@ CI(Continuous Integration)는 위 계층과 Markdown, 합성 환경 산출물, �
 
 ### Release 전 단기 합격
 
-Raspberry Pi 5 8 GB에서 생성기, `lidar-processing`과 상태 수집 process를 함께 실행한다. Docker
+Raspberry Pi 5 8 GB에서 시뮬레이터, `lidar-processing`과 상태 수집 process를 함께 실행한다. Docker
 CPU 100 percent는 논리 core 하나로 해석한다.
 
 | 항목 | 합격선 |
 | --- | --- |
 | 지속 시간 | 준비 2초 이상, 측정 30초 이상 |
-| 생성기 CPU | 측정 구간 P95 75 percent 이하 |
-| 생성기 RSS | P95 128 MiB 이하 |
+| 시뮬레이터 CPU | 측정 구간 P95 75 percent 이하 |
+| 시뮬레이터 RSS | P95 128 MiB 이하 |
 | 두 sensor frame 생성 지연 | P99 70 ms 이하 |
-| 생성기 원인 sequence gap | 0 |
+| 시뮬레이터 원인 sequence gap | 0 |
 | 처리 상태 | 두 sensor와 융합 결과 `GOOD` 유지 |
 | 데이터 의미 | 생성 scan과 처리 높이 및 적재율 검증 통과 |
 | 장비 상태 | OOM, container restart와 thermal throttling 0회 |
@@ -108,7 +108,7 @@ CPU 100 percent는 논리 core 하나로 해석한다.
 
 ## 설정과 변경 원칙
 
-생성기는 `generator.v2.json`, `environment.v1.json`과 `quality-profile.v1.json`을 읽는다. 난수
+시뮬레이터는 `simulator.v2.json`, `environment.v1.json`과 `quality-profile.v1.json`을 읽는다. 난수
 stream과 수치 모델 재현 경계는 simulation model version 1이다. 합성 안식각 35도와 경사 이완
 반복 상한은 engine 정책이며 배포 override나 환경 형상 입력이 아니다.
 

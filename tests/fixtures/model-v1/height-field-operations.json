@@ -2700,7 +2700,7 @@
       }
     }
   ],
-  "source": "examples/generator.v2.json",
+  "source": "examples/simulator.v2.json",
   "surface_area_m2": 14.76,
   "x_coordinates_m": [
     0.0,

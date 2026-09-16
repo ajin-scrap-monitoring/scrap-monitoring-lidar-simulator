@@ -31,7 +31,7 @@ fn command(directory: &TempDir, observation_mode: &str, observation_port: u16) -
         .env_clear()
         .arg("edge-validation")
         .arg("--config")
-        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"))
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"))
         .arg("--grpc-socket-dir")
         .arg(directory.path().join("sockets"))
         .arg("--status-dir")

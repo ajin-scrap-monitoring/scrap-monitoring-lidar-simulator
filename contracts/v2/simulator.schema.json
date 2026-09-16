@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-generator/contracts/v2/generator.schema.json",
-  "title": "LiDAR generator configuration v2",
+  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-simulator/contracts/v2/simulator.schema.json",
+  "title": "LiDAR simulator configuration v2",
   "type": "object",
   "additionalProperties": false,
   "required": [

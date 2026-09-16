@@ -31,7 +31,7 @@ type PixelPoint = tuple[float, float]
 
 _BUNDLE_DIR = Path(__file__).resolve().parent
 _ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_CONFIG = _ROOT / "examples" / "generator.v2.json"
+_DEFAULT_CONFIG = _ROOT / "examples" / "simulator.v2.json"
 _DEFAULT_OUTPUT = _BUNDLE_DIR
 _DEFAULT_ASSETS = _BUNDLE_DIR / "assets"
 _DOCUMENT_BASENAME = "synthetic-environment-specification"
@@ -83,7 +83,7 @@ def _as_view(value: Any) -> Any:
 class PublicInputs:
     """Public JSON values needed by the document renderer."""
 
-    generator: _ObjectView
+    simulator: _ObjectView
     environment: _ObjectView
 
 
@@ -91,16 +91,16 @@ class PublicInputs:
 class SpecificationSources:
     """Validated public inputs for the synthetic environment specification."""
 
-    generator_path: Path
+    simulator_path: Path
     environment_path: Path
     quality_path: Path
     inputs: PublicInputs
-    generator_document: JsonObject
+    simulator_document: JsonObject
     environment_document: JsonObject
     quality_document: JsonObject
     hashes: dict[str, str]
     input_fingerprint: str
-    generator_sha256: str
+    document_generator_sha256: str
     model_values: dict[str, float | int]
     fingerprint: str
 
@@ -256,29 +256,29 @@ def _scale_coordinates(value: Any) -> Any:
     return value
 
 
-def load_sources(generator_path: Path) -> SpecificationSources:
+def load_sources(simulator_path: Path) -> SpecificationSources:
     """Load and validate the three public JSON sources."""
-    generator_path = generator_path.resolve()
-    if _DEFAULT_CONFIG.is_symlink() or generator_path != _DEFAULT_CONFIG.absolute():
-        raise ValueError("specification generator config must be examples/generator.v2.json")
-    generator_document = _load_json(generator_path)
+    simulator_path = simulator_path.resolve()
+    if _DEFAULT_CONFIG.is_symlink() or simulator_path != _DEFAULT_CONFIG.absolute():
+        raise ValueError("specification simulator config must be examples/simulator.v2.json")
+    simulator_document = _load_json(simulator_path)
     expected_references = (
         ("environment_path", _ROOT / "examples" / "environment.v1.json"),
         ("quality_profile_path", _ROOT / "examples" / "quality-profile.v1.json"),
     )
     for field, expected_path in expected_references:
-        value = generator_document.get(field)
+        value = simulator_document.get(field)
         if not isinstance(value, str):
-            raise ValueError(f"specification generator field must be a path string: {field}")
-        referenced_path = (generator_path.parent / value).resolve()
+            raise ValueError(f"specification simulator field must be a path string: {field}")
+        referenced_path = (simulator_path.parent / value).resolve()
         if expected_path.is_symlink() or referenced_path != expected_path.absolute():
             raise ValueError(f"specification requires {_relative_path(expected_path)}")
     environment_path = expected_references[0][1].resolve()
     quality_path = expected_references[1][1].resolve()
-    paths = (environment_path, generator_path, quality_path)
-    documents = (_load_json(environment_path), generator_document, _load_json(quality_path))
+    paths = (environment_path, simulator_path, quality_path)
+    documents = (_load_json(environment_path), simulator_document, _load_json(quality_path))
     inputs = PublicInputs(
-        generator=_ObjectView(generator_document),
+        simulator=_ObjectView(simulator_document),
         environment=_ObjectView(documents[0]),
     )
     relative_names = tuple(_relative_path(path) for path in paths)
@@ -292,7 +292,7 @@ def load_sources(generator_path: Path) -> SpecificationSources:
         input_digest.update(b"\0")
         input_digest.update(bytes.fromhex(hashes[name]))
     input_fingerprint = input_digest.hexdigest()
-    generator_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    document_generator_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     model_values: dict[str, float | int] = {
         "angle_of_repose_deg": DEFAULT_ANGLE_OF_REPOSE_DEG,
         "slope_relaxation_max_iterations": DEFAULT_SLOPE_RELAXATION_MAX_ITERATIONS,
@@ -300,21 +300,21 @@ def load_sources(generator_path: Path) -> SpecificationSources:
     artifact_digest = hashlib.sha256()
     artifact_digest.update(b"synthetic-environment-artifacts-v1\0")
     artifact_digest.update(bytes.fromhex(input_fingerprint))
-    artifact_digest.update(bytes.fromhex(generator_sha256))
+    artifact_digest.update(bytes.fromhex(document_generator_sha256))
     artifact_digest.update(
         json.dumps(model_values, allow_nan=False, sort_keys=True, separators=(",", ":")).encode()
     )
     return SpecificationSources(
-        generator_path=generator_path,
+        simulator_path=simulator_path,
         environment_path=environment_path,
         quality_path=quality_path,
         inputs=inputs,
-        generator_document=documents[1],
+        simulator_document=documents[1],
         environment_document=documents[0],
         quality_document=documents[2],
         hashes=hashes,
         input_fingerprint=input_fingerprint,
-        generator_sha256=generator_sha256,
+        document_generator_sha256=document_generator_sha256,
         model_values=model_values,
         fingerprint=artifact_digest.hexdigest(),
     )
@@ -558,7 +558,7 @@ def generate_markdown(sources: SpecificationSources, output_path: Path) -> None:
     )
     lines.extend(
         f"| INLET {index + 1} | {_number(x)} | {_number(y)} | {index} |"
-        for index, (x, y) in enumerate(sources.inputs.generator.scenario.inlet_positions_xy_m)
+        for index, (x, y) in enumerate(sources.inputs.simulator.scenario.inlet_positions_xy_m)
     )
     lines.extend(
         [
@@ -610,10 +610,10 @@ def generate_markdown(sources: SpecificationSources, output_path: Path) -> None:
             "",
             "### 생성 시나리오와 측정 모델",
             "",
-            f"Source: `{_relative_path(sources.generator_path)}`",
+            f"Source: `{_relative_path(sources.simulator_path)}`",
             "",
             "```json",
-            json.dumps(sources.generator_document, ensure_ascii=True, allow_nan=False, indent=2),
+            json.dumps(sources.simulator_document, ensure_ascii=True, allow_nan=False, indent=2),
             "```",
             "",
             "### 적재 표면 계산 정책",
@@ -646,9 +646,9 @@ def write_source_manifest(sources: SpecificationSources, output_path: Path) -> N
         "sources": [
             {"path": name, "sha256": digest} for name, digest in sorted(sources.hashes.items())
         ],
-        "generator": {
+        "document_generator": {
             "path": _relative_path(Path(__file__)),
-            "sha256": sources.generator_sha256,
+            "sha256": sources.document_generator_sha256,
         },
         "model_values": sources.model_values,
         "generated_artifacts": [
@@ -813,7 +813,7 @@ def _draw_plan_inlets(
     project: Any,
 ) -> None:
     font = _font(24)
-    positions = sources.inputs.generator.scenario.inlet_positions_xy_m
+    positions = sources.inputs.simulator.scenario.inlet_positions_xy_m
     for index, coordinate in enumerate(positions):
         pixel = project(coordinate)
         draw.ellipse(_centered_box(pixel, 13), fill=_INLET, outline=_WHITE, width=3)
@@ -962,7 +962,7 @@ def _draw_isometric_inlets(
 ) -> None:
     floor_z = sources.inputs.environment.floor_z_m
     top_z = sources.inputs.environment.top_z_m
-    for index, (x, y) in enumerate(sources.inputs.generator.scenario.inlet_positions_xy_m):
+    for index, (x, y) in enumerate(sources.inputs.simulator.scenario.inlet_positions_xy_m):
         low = project((x, y, floor_z))
         high = project((x, y, top_z))
         _dashed_line(draw, low, high, fill=_INLET, width=4, dash=14)
@@ -1239,7 +1239,7 @@ def _write_sensor_section(
     drawings: DrawingPaths,
 ) -> None:
     _heading(document, "4. 투입구와 센서 설치", 1)
-    inlets = sources.inputs.generator.scenario.inlet_positions_xy_m
+    inlets = sources.inputs.simulator.scenario.inlet_positions_xy_m
     _paragraph(
         document,
         "투입구 설정은 XY 위치만 정의한다. 투입 높이와 설비 형상은 정의하지 않으며 시뮬레이션은 "
@@ -1311,7 +1311,7 @@ def _write_sensor_section(
 
 def _write_simulation_section(document: DocumentType, sources: SpecificationSources) -> None:
     _heading(document, "5. 적재 표면과 시나리오", 1)
-    scenario = sources.inputs.generator.scenario
+    scenario = sources.inputs.simulator.scenario
     surface = scenario.surface
     boundary = tuple(sources.inputs.environment.boundary_xy_m)
     minimum_x, maximum_x, minimum_y, maximum_y = _bounds(boundary)
@@ -1380,7 +1380,7 @@ def _write_simulation_section(document: DocumentType, sources: SpecificationSour
 
 def _write_measurement_section(document: DocumentType, sources: SpecificationSources) -> None:
     _heading(document, "6. LiDAR 측정 모델", 1)
-    measurement = sources.inputs.generator.measurement
+    measurement = sources.inputs.simulator.measurement
     nominal_points = measurement.sample_rate_hz / measurement.rotation_rate_hz
     _add_table(
         document,
@@ -1722,7 +1722,7 @@ def _save_png(image: Image.Image, path: Path, fingerprint: str) -> None:
     metadata.add_text("Artifact-Fingerprint", fingerprint)
     metadata.add_text(
         "Source-Files",
-        "examples/environment.v1.json;examples/generator.v2.json;examples/quality-profile.v1.json",
+        "examples/environment.v1.json;examples/simulator.v2.json;examples/quality-profile.v1.json",
     )
     image.save(path, format="PNG", optimize=True, pnginfo=metadata, dpi=(300, 300))
 
@@ -1787,7 +1787,7 @@ def _relative_path(path: Path) -> str:
 def _source_responsibility(name: str) -> str:
     if name.endswith("environment.v1.json"):
         return "적재 공간과 sensor 설치"
-    if name.endswith("generator.v2.json"):
+    if name.endswith("simulator.v2.json"):
         return "시나리오, 측정과 seed"
     return "Sensor별 합성 quality 분포"
 
@@ -1840,7 +1840,7 @@ def _quality_frequencies(value: JsonObject) -> str:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--generator-config", type=Path, default=_DEFAULT_CONFIG)
+    parser.add_argument("--simulator-config", type=Path, default=_DEFAULT_CONFIG)
     parser.add_argument("--output-dir", type=Path, default=_DEFAULT_OUTPUT)
     parser.add_argument("--assets-dir", type=Path, default=_DEFAULT_ASSETS)
     parser.add_argument("--check", action="store_true")
@@ -1852,7 +1852,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     """Generate or validate the public synthetic environment specification."""
     arguments = _build_parser().parse_args(argv)
-    sources = load_sources(arguments.generator_config)
+    sources = load_sources(arguments.simulator_config)
     output_dir = arguments.output_dir.resolve()
     assets_dir = arguments.assets_dir.resolve()
     if arguments.check:

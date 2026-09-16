@@ -14,7 +14,7 @@ Pi 5 ARM64 엣지 장비에서 센서 2대의 scan을 만들고, 같은 장비�
 | 적재 모델 관찰 stream | 1초 주기의 JSON Lines TCP stream | 별도 시각화 프로그램 |
 | 상태 snapshot | sensor별 `lidar-driver-a/`, `lidar-driver-b/` 하위 경로 | edge 상태 수집기와 운영자 |
 
-생성기는 하나의 결정론적 적재 모델을 공유하면서 센서별 독립 회전과 scan을 생성한다. 표면은
+시뮬레이터는 하나의 결정론적 적재 모델을 공유하면서 센서별 독립 회전과 scan을 생성한다. 표면은
 적재와 수거, 안식각 기반 확산, 국소 요철과 설정된 측정 왜곡을 반영한다. 관찰 연결 실패는
 scan 생성과 gRPC 구독을 중단시키지 않는다.
 
@@ -35,9 +35,9 @@ Registry에 게시된 `linux/arm64` 이미지를 digest로 받아 실행한다.
 다음 명령은 새 checkout에서 공개 설정을 검사하고 `lidar-processing`용 합성 처리 설정을 생성한다.
 
 ```bash
-cargo run --locked -- check --config examples/generator.v2.json
+cargo run --locked -- check --config examples/simulator.v2.json
 cargo run --locked -- export-synthetic-processing-config \
-  --generator-config examples/generator.v2.json \
+  --simulator-config examples/simulator.v2.json \
   --socket-dir /sockets \
   --site-id synthetic-site \
   --edge-id synthetic-edge \
@@ -54,11 +54,12 @@ Domain Socket) 구독과 상태 출력을 검증한다. 계약과 문서 자동�
 
 ### 설정 경계
 
-설정은 2개 계층으로 분리한다.
+설정은 3개 계층으로 분리한다.
 
 | 계층 | 정본 | 책임 |
 |---|---|---|
 | 합성 모델 | versioned JSON | 환경 형상, 센서, 시나리오, 측정, 품질, seed와 관찰 복구 정책 |
+| 배포 연결 | 배포 환경변수 | 시뮬레이터와 `lidar-processing`이 공유하는 Host UDS 경로 |
 | 배포 실행 | CLI 인자 또는 환경변수 | 파일 경로, UDS 경로, 배포 식별자, 관찰 endpoint와 진단 override |
 
 공개 합성 입력은 다음 3개다.
@@ -66,7 +67,7 @@ Domain Socket) 구독과 상태 출력을 검증한다. 계약과 문서 자동�
 | 파일 | 역할 |
 |---|---|
 | `examples/environment.v1.json` | 적재 공간과 센서 설치 정본 |
-| `examples/generator.v2.json` | 시나리오, 측정, 관찰 전송과 진단 설정 |
+| `examples/simulator.v2.json` | 시나리오, 측정, 관찰 전송과 진단 설정 |
 | `examples/quality-profile.v1.json` | 센서별 합성 quality 분포 |
 
 CLI 인자, 환경변수, JSON, 코드 기본값 순서로 값을 선택한다. 앞선 계층의 값이 있으면 뒤의
@@ -74,33 +75,45 @@ CLI 인자, 환경변수, JSON, 코드 기본값 순서로 값을 선택한다. 
 않는다. `lidar_1.sock`과 `lidar_2.sock`은 환경 JSON의 센서 ID와 하나의 UDS 디렉토리에서
 결정된다.
 
-### 환경변수
+### 배포 환경변수
+
+`SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR`은 Docker 명령이 읽는 Host 절대 경로다. 시뮬레이터와
+`lidar-processing`은 이 directory를 서로 다른 container 경로에 mount한다. 시뮬레이터 process는
+이 환경변수를 직접 읽지 않는다.
+
+| 환경변수 | 공개 예시 | 소비자 |
+|---|---|---|
+| `SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR` | `/opt/ajin/runtime/sockets/lidar-simulator` | Docker 배포 명령 |
+
+### 시뮬레이터 환경변수
 
 환경변수는 14개다.
 
 | 환경변수 | CLI 인자 | 필수 여부 및 fallback |
 |---|---|---|
-| `SCRAP_LIDAR_GENERATOR_CONFIG` | `--config` | 둘 중 하나 필수 |
-| `SCRAP_LIDAR_GENERATOR_GRPC_SOCKET_DIR` | `--grpc-socket-dir` | 둘 중 하나 필수, 절대 경로 |
-| `SCRAP_LIDAR_GENERATOR_STATUS_DIR` | `--status-dir` | 둘 중 하나 필수, 절대 경로 |
+| `SCRAP_LIDAR_SIMULATOR_CONFIG` | `--config` | 둘 중 하나 필수 |
+| `SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_DIR` | `--grpc-socket-dir` | 둘 중 하나 필수, 절대 경로 |
+| `SCRAP_LIDAR_SIMULATOR_STATUS_DIR` | `--status-dir` | 둘 중 하나 필수, 절대 경로 |
 | `SITE_ID` | `--site-id` | 둘 중 하나 필수 |
 | `EDGE_ID` | `--edge-id` | 둘 중 하나 필수 |
 | `CONFIG_REVISION` | `--config-revision` | 둘 중 하나 필수 |
 | `DEPLOYMENT_REVISION` | `--deployment-revision` | 둘 중 하나 필수 |
-| `SCRAP_LIDAR_GENERATOR_MEAN_FILL_DURATION_S` | `--mean-fill-duration-s` | `scenario.mean_fill_duration_s` |
-| `SCRAP_LIDAR_GENERATOR_COLLECTION_THRESHOLD_CENTER_RATIO` | `--collection-threshold-center-ratio` | `scenario.collection_threshold_range` |
-| `SCRAP_LIDAR_GENERATOR_OBSERVATION_HOST` | `--observation-host` | 둘 중 하나 필수 |
-| `SCRAP_LIDAR_GENERATOR_OBSERVATION_PORT` | `--observation-port` | 둘 중 하나 필수 |
-| `SCRAP_LIDAR_GENERATOR_OBSERVATION_INTERVAL_S` | `--observation-interval-s` | 1초 |
-| `SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_ENABLED` | `--diagnostics-enabled` | `diagnostics.enabled` |
-| `SCRAP_LIDAR_GENERATOR_DIAGNOSTICS_OUTPUT_PATH` | `--diagnostics-output-path` | `diagnostics.output_path` |
+| `SCRAP_LIDAR_SIMULATOR_MEAN_FILL_DURATION_S` | `--mean-fill-duration-s` | `scenario.mean_fill_duration_s` |
+| `SCRAP_LIDAR_SIMULATOR_COLLECTION_THRESHOLD_CENTER_RATIO` | `--collection-threshold-center-ratio` | `scenario.collection_threshold_range` |
+| `SCRAP_LIDAR_SIMULATOR_OBSERVATION_HOST` | `--observation-host` | 둘 중 하나 필수 |
+| `SCRAP_LIDAR_SIMULATOR_OBSERVATION_PORT` | `--observation-port` | 둘 중 하나 필수 |
+| `SCRAP_LIDAR_SIMULATOR_OBSERVATION_INTERVAL_S` | `--observation-interval-s` | 1초 |
+| `SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_ENABLED` | `--diagnostics-enabled` | `diagnostics.enabled` |
+| `SCRAP_LIDAR_SIMULATOR_DIAGNOSTICS_OUTPUT_PATH` | `--diagnostics-output-path` | `diagnostics.output_path` |
 
-`.env.example`은 공개 합성 모델과 함께 사용할 배포 템플릿이다. `<...>` 값과
-`visualizer.example`은 배포 환경에 맞게 바꾼다. 평균 적재 주기 기본값은 86,400초다. 수거
+`.env.example`은 공개 합성 모델과 함께 사용할 배포 템플릿이다. `SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR`은
+배포 명령이 사용하며 시뮬레이터는 이 값을 무시한다. 나머지 환경변수는 시뮬레이터 실행 설정이다.
+`replace-with-...` 값과 `visualizer.example`은 배포 환경에 맞게 바꾼다. 평균 적재 주기 기본값은
+86,400초다. 수거
 기준 중심값 0.90은 회차별 `0.85-0.95` 범위를 만든다. 관찰 기본 port는 17000이고 동적
 snapshot 기본 주기는 1초다.
 
-현재 생성기의 설정에는 크레덴셜이 없다. `.env`에 자격 증명을 넣지 않으며 Docker secret을
+현재 시뮬레이터의 설정에는 크레덴셜이 없다. `.env`에 자격 증명을 넣지 않으며 Docker secret을
 추가하지 않는다. 관찰 주소, 배포 식별자와 로컬 경로는 비밀값은 아니지만 장비별 `.env`는
 Git에 추가하지 않는다.
 
@@ -110,14 +123,14 @@ JSON Lines 파일로 남기는 개발 검증 기능이다. 일반 scan 전송과
 
 ### 합성 검증용 처리 설정 생성
 
-`lidar-processing`은 생성기의 환경 JSON을 직접 읽지 않는다. 다음 exporter가 공개 합성
+`lidar-processing`은 시뮬레이터의 환경 JSON을 직접 읽지 않는다. 다음 exporter가 공개 합성
 환경을 `lidar-processing`의 센서별 강체 변환, 50 mm 단면 ROI(Region of Interest), 높이 범위,
 측정 필터 형식으로 변환한다. `lidar-processing`이 요구하는 calibration 항목에는 합성 검증용 데모
 값만 넣는다.
 
 ```bash
 cargo run --locked -- export-synthetic-processing-config \
-  --generator-config examples/generator.v2.json \
+  --simulator-config examples/simulator.v2.json \
   --socket-dir /sockets \
   --site-id synthetic-site \
   --edge-id synthetic-edge \
@@ -187,22 +200,22 @@ Release 전 검증은 두 sensor scan 의미, ARM64 상태와 sequence 진행 �
 [`docs/performance.md`](docs/performance.md)와 [`docs/development-plan.md`](docs/development-plan.md)가
 정본이다.
 
-생성기 실행 입력은 다음 5개 Host 경로로 구분한다.
+시뮬레이터 실행 입력은 다음 5개 Host 경로로 구분한다.
 
 | Host 입력 | Container 경로 | 역할 |
 |---|---|---|
 | `/opt/ajin/config/lidar-simulator/` | `/config/` | 공개 합성 JSON 3개 |
 | `/etc/scrap-monitoring-lidar-simulator.env` | `--env-file` | 실행 경로와 검증 식별자 |
-| `/opt/ajin/runtime/sockets/lidar-simulator/` | `/run/lidar/` | sensor별 gRPC UDS |
+| `${SCRAP_LIDAR_SIMULATOR_GRPC_SOCKET_HOST_DIR}` | `/run/lidar/` | sensor별 gRPC UDS |
 | `/opt/ajin/runtime/status/lidar-driver-a/`과 `lidar-driver-b/` | `/status/`의 같은 하위 경로 | driver 호환 상태 파일 |
 | `/opt/ajin/runtime/diagnostics/lidar-simulator/` | `/data/diagnostics/` | 기본 진단 출력, 비활성화 시 생략 가능 |
 
-`.env`의 `SCRAP_LIDAR_GENERATOR_CONFIG=/config/generator.v2.json`은 container 경로다. Host의
-`examples/environment.v1.json`, `examples/generator.v2.json`과
+`.env`의 `SCRAP_LIDAR_SIMULATOR_CONFIG=/config/simulator.v2.json`은 container 경로다. Host의
+`examples/environment.v1.json`, `examples/simulator.v2.json`과
 `examples/quality-profile.v1.json`을 첫 번째 경로에 복사한 뒤 directory 전체를 read-only로
 mount한다.
 
-Exporter가 만든 `processing.synthetic.json`은 생성기 입력이 아니다. 검증용 `lidar-processing`
+Exporter가 만든 `processing.synthetic.json`은 시뮬레이터 입력이 아니다. 검증용 `lidar-processing`
 container에 별도로 read-only mount한다.
 
 Release 선택, Host 준비, 전체 Docker 명령과 반복 가능한 image 검증은

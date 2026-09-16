@@ -9,7 +9,7 @@
 | [Slamtec RPLIDAR SDK 2.1.0 commit](https://github.com/Slamtec/rplidar_sdk/tree/99478e5fb90de3b4a6db0080acacd373f8b36869) | HQ node 자료형과 장비 API |
 | `contracts/lidar/v1/upstream.json`의 `ajin-edge-platform` commit | SDK 호출, 정수 변환, 시각과 gRPC 계약 |
 
-생성기는 제조사 UDP packet과 SDK 수신기를 구현하지 않는다. 장면의 합성 측정값을 HQ node가
+시뮬레이터는 제조사 UDP packet과 SDK 수신기를 구현하지 않는다. 장면의 합성 측정값을 HQ node가
 표현할 수 있는 값으로 양자화한 뒤 `ajin-edge-platform` driver가 SDK 결과에 적용하는 변환을 그대로 수행한다.
 
 ## 장비 mode와 생성 빈도
@@ -33,10 +33,10 @@
 5. 첫 scan을 `scan_hz` 계산 기준으로만 사용하고 다음 scan부터 frame 게시.
 
 SDK 배열의 첫 node 시각을 요청하는 `grabScanDataHqWithTimeStamp`는 `ajin-edge-platform`에서 사용하지
-않는다. 외부 frame 시각은 첫 측정점 시각이 아니라 수집 완료 시각이다. 생성기도 이 의미를
+않는다. 외부 frame 시각은 첫 측정점 시각이 아니라 수집 완료 시각이다. 시뮬레이터도 이 의미를
 따른다.
 
-`ascendScanData` 결과는 각도 오름차순이다. 생성기는 HQ 양자화 뒤 `angle_mdeg`를 안정
+`ascendScanData` 결과는 각도 오름차순이다. 시뮬레이터는 HQ 양자화 뒤 `angle_mdeg`를 안정
 정렬한다. 같은 정수 각도를 가진 측정점은 생성 순서를 유지한다. 소비자는 첫 각도를 회전의
 고정 0도로 가정하지 않고 배열이 비어 있지 않거나 길이가 고정이라고 가정하지 않는다.
 
@@ -52,11 +52,11 @@ quality = quality_byte >> 2
 ```
 
 나눗셈은 정수 나눗셈이다. HQ 각도는 한 회전 65,536단계이고 HQ 거리는 1 mm당 4단계다.
-생성기는 합성 실수 각도와 거리를 가장 가까운 HQ 값으로 먼저 양자화한 뒤 위 변환을 적용한다.
+시뮬레이터는 합성 실수 각도와 거리를 가장 가까운 HQ 값으로 먼저 양자화한 뒤 위 변환을 적용한다.
 거리 0은 `distance_mm == 0`으로 유지된다.
 
 외부 `quality`는 SDK의 원래 8-bit byte가 아니다. `ajin-edge-platform` driver가 상위 6 bit로 정규화한
-0-63 값이다. 생성기의 quality profile은 양자화 전 HQ byte 분포를 정의하고 wire 변환에서
+0-63 값이다. 시뮬레이터의 quality profile은 양자화 전 HQ byte 분포를 정의하고 wire 변환에서
 오른쪽으로 2 bit 이동한다. 거리 유효 여부와 quality 값은 서로 다른 필드이며 소비자는
 `distance_mm > 0`과 quality filter를 각각 적용한다.
 
@@ -73,13 +73,13 @@ quality = quality_byte >> 2
 계산한다. 첫 완료 scan은 직전 시각이 없으므로 게시하지 않는다. 그다음 frame부터 sensor별
 `sequence`를 1부터 증가시킨다.
 
-생성기는 실행 시작마다 sensor별 새 `instance_id`를 만든다. process 재시작은 sequence를 1로
+시뮬레이터는 실행 시작마다 sensor별 새 `instance_id`를 만든다. process 재시작은 sequence를 1로
 되돌리지만 새 `instance_id`로 이전 실행과 구분한다. 구독 중 frame 유실은 같은 instance의
 sequence gap으로 확인한다.
 
-## 생성기가 재현하는 범위
+## 시뮬레이터가 재현하는 범위
 
-생성기가 재현하는 항목은 다음과 같다.
+시뮬레이터가 재현하는 항목은 다음과 같다.
 
 - 공개 프로파일의 명목 sample 및 회전 빈도
 - sensor별 독립 회전과 가변 길이 scan
@@ -89,7 +89,7 @@ sequence gap으로 확인한다.
 - 완료 시각, 첫 scan 생략, scan rate와 instance sequence 의미
 - 외부 Proto의 필드와 gRPC 구독 경계
 
-생성기가 재현하지 않는 항목은 다음과 같다.
+시뮬레이터가 재현하지 않는 항목은 다음과 같다.
 
 - 제조사 UDP packet과 capsule decode
 - 장비별 motor 변동과 실제 측정점 개수 분포
@@ -102,7 +102,7 @@ sequence gap으로 확인한다.
 
 ## 의존성과 검증
 
-생성기는 RPLIDAR SDK에 link하지 않는다. SDK source, compiler와 build 산출물도 시뮬레이터 image에
+시뮬레이터는 RPLIDAR SDK에 link하지 않는다. SDK source, compiler와 build 산출물도 시뮬레이터 image에
 포함하지 않는다. 외부 SDK는 BSD-2-Clause license를 따른다.
 
 자동 검증은 HQ 표현 가능성, 정수 변환 경계, 0 거리, quality 이동, 안정 angle 정렬, 첫 scan

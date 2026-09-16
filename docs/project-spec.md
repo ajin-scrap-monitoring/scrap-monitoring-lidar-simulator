@@ -29,19 +29,19 @@ Detection and Ranging) 시뮬레이터다. 공개 합성 환경에서 RPLIDAR S2
 | 파일 | 책임 |
 | --- | --- |
 | `examples/environment.v1.json` | 적재 공간, 바닥, 상단과 센서 위치 및 방향 |
-| `examples/generator.v2.json` | 적재 시나리오, 측정, 관찰 전송, 진단과 seed |
+| `examples/simulator.v2.json` | 적재 시나리오, 측정, 관찰 전송, 진단과 seed |
 | `examples/quality-profile.v1.json` | 센서별 합성 quality 분포 |
 
 환경과 품질 설정은 `lidar_1`, `lidar_2`를 정확히 한 번씩 포함한다. 환경 경계는 자기 교차가
 없는 다각형이고 바닥은 상단보다 낮다. 센서의 0도 및 90도 방향은 길이가 1인 직교 단위벡터다.
-세 파일의 sensor ID와 참조 관계가 다르면 생성기는 시작하지 않는다.
+세 파일의 sensor ID와 참조 관계가 다르면 시뮬레이터는 시작하지 않는다.
 
 합성 모델, 센서, 측정, quality와 seed는 versioned JSON으로 관리한다. 파일 및 UDS(Unix Domain
 Socket) 경로, 실행 식별자, 평균 적재 주기, 수거 임계치 중심값, 관찰 endpoint와 진단 override는
 CLI(Command-Line Interface) 인자 또는 환경변수로 제공한다. CLI 인자, 환경변수, JSON과 코드
 기본값 순서로 값을 선택한다.
 
-공간과 센서 정의는 scan frame에 포함하지 않는다. `lidar-processing`은 생성기의 환경 JSON을
+공간과 센서 정의는 scan frame에 포함하지 않는다. `lidar-processing`은 시뮬레이터의 환경 JSON을
 직접 읽지 않으며 합성 처리 설정 exporter가 같은 환경을 외부 처리 형식으로 변환한다.
 
 ## 적재와 수거 시나리오
@@ -57,14 +57,14 @@ CLI(Command-Line Interface) 인자 또는 환경변수로 제공한다. CLI 인�
 ## 센서 측정
 
 공개 측정 프로파일은 센서당 초당 32,000 sample, 초당 10회전과 0.05-30 m 측정 범위를 사용한다.
-명목상 한 회전은 3,200개 측정점이지만 scan 배열 길이는 고정 계약이 아니다. 생성기는 sample
+명목상 한 회전은 3,200개 측정점이지만 scan 배열 길이는 고정 계약이 아니다. 시뮬레이터는 sample
 시각과 회전 경계에 포함된 실제 측정점 수를 사용하며 두 센서는 서로 기다리지 않고 독립적으로
 회전을 완료한다.
 
 각 광선은 현재 적재 표면, 바닥, 외벽과 고정 표면 중 가장 가까운 교차점을 측정한다. 교차점이
 없거나 측정 범위 밖이면 거리 0으로 표현한다. 거리 0은 높이 0이 아니라 무효 거리다.
 
-생성기는 합성 실수값을 SDK(Software Development Kit) HQ 각도 Q14와 거리 Q2로 양자화한 뒤
+시뮬레이터는 합성 실수값을 SDK(Software Development Kit) HQ 각도 Q14와 거리 Q2로 양자화한 뒤
 `ajin-edge-platform` driver와 같은 정수 변환을 적용한다. 외부 측정점은 각도 millidegree, 거리
 millimeter와 0-63 quality로 구성하고 각도 오름차순으로 정렬한다.
 
@@ -74,7 +74,7 @@ millimeter와 0-63 quality로 구성하고 각도 오름차순으로 정렬한�
 
 ## Scan 구독 계약
 
-생성기는 같은 process에서 sensor별 gRPC(Google Remote Procedure Call) server-streaming UDS
+시뮬레이터는 같은 process에서 sensor별 gRPC(Google Remote Procedure Call) server-streaming UDS
 endpoint 2개를 제공한다. `lidar-processing`은 각 endpoint의
 `LidarScanSource.SubscribeScans`를 호출하는 구독자다. 계약 정본과 고정 출처는
 `contracts/lidar/v1/`에 둔다.
@@ -100,11 +100,11 @@ frame 2개만 보관하고 동시 구독자 8개까지 받는다. 느린 구독�
 같은 `instance_id`의 `sequence` 간격으로 손실을 확인한다. scan 단위 ACK(Acknowledgement), 재전송과
 중복 처리 계약은 사용하지 않는다.
 
-구독자의 연결, 해제와 재연결은 scan 생성과 적재 시나리오를 초기화하지 않는다. 생성기 process
+구독자의 연결, 해제와 재연결은 scan 생성과 적재 시나리오를 초기화하지 않는다. 시뮬레이터 process
 재시작은 빈 적재 공간, 새 sensor별 `instance_id`와 `sequence` 1로 시작한다. 구독 요청 오류와
 상태 표현은 고정한 `ajin-edge-platform` 계약을 따른다.
 
-생성기는 `lidar-driver-a`와 `lidar-driver-b` 호환 상태 파일을 별도 상태 directory에 기록한다.
+시뮬레이터는 `lidar-driver-a`와 `lidar-driver-b` 호환 상태 파일을 별도 상태 directory에 기록한다.
 상태 파일은 첫 frame 게시 전 `STARTING`, 게시 후 `HEALTHY`를 나타낸다.
 
 ## 합성 처리 설정
@@ -116,11 +116,11 @@ frame 2개만 보관하고 동시 구독자 8개까지 받는다. 느린 구독�
 
 exporter는 실제 edge 설정을 입력받거나 병합하지 않는다. 실제 센서 설치 보정, 융합 보정과
 적재율 계산은 이 Repository의 책임이 아니다. 합성 실행의 `site_id`, `edge_id`와
-`config_revision`은 생성기와 처리 설정에서 같은 값을 사용한다.
+`config_revision`은 시뮬레이터와 처리 설정에서 같은 값을 사용한다.
 
 ## 적재 모델 관찰
 
-생성기는 scan 계약과 별도로 적재 모델 관찰 데이터를 JSON Lines TCP(Transmission Control
+시뮬레이터는 scan 계약과 별도로 적재 모델 관찰 데이터를 JSON Lines TCP(Transmission Control
 Protocol) stream으로 보낸다. 연결할 때 공개 합성 공간, 외벽, 투입구와 센서 정보를 포함한 정적
 header를 한 번 보내고 기본 1초마다 시뮬레이션 시각, 적재율, 상태와 현재 표면을 포함한 동적
 snapshot을 보낸다.

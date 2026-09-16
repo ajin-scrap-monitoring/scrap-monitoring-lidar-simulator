@@ -93,7 +93,7 @@ deviation_integral = deviation * duration * (u / 2 - sin(2 * pi * u) / (4 * pi))
 적분의 0 판정에 이 값을 사용한다. 조회 시각은 tolerance 없이 `[0, duration_s]`를 요구하고
 역방향 적분을 거부한다. 일반 fixture 비교 tolerance를 내부 상태 검증에 대신 사용하지 않는다.
 
-생성기는 잔여 길이가 최소 change duration의 2배 이상인 동안 segment 쌍을 추가한다. 각 쌍은
+시뮬레이터는 잔여 길이가 최소 change duration의 2배 이상인 동안 segment 쌍을 추가한다. 각 쌍은
 첫 길이 uniform, 둘째 길이 uniform, 양수 편차의 선행 여부 boolean, balance uniform 순서로 word
 4개를 소비한다. Balance 상한은 양수/음수 허용 편차와 해당 길이의 곱 중 작은 값이다. 두 편차는
 각각 `balance / positive_duration`과 `-balance / negative_duration`이므로 쌍의 적분은 상쇄된다.
@@ -232,7 +232,7 @@ Quality 빈도 누적합과 합계는 checked `u128`로 계산한다. 각 누적
 후보 거리가 같으면 먼저 평가한 정적 후보를 유지한다.
 
 기준 scan은 광선 및 정적 교차 cache의 장면과 최소 및 최대 측정 거리 metadata를 공유한다. 공간
-왜곡은 이 장면과 거리 범위가 생성기 설정과 정확히 일치할 때만 적용한다. 각 공개 event resolver는
+왜곡은 이 장면과 거리 범위가 시뮬레이터 설정과 정확히 일치할 때만 적용한다. 각 공개 event resolver는
 적용 가능한 동적 표면 sample이 없어도 입력 event 전체를 먼저 검증한다.
 
 ScanFrame factory는 sample 정규화 전체가 성공한 뒤 monotonic clock과 wall clock을 읽는다. 첫

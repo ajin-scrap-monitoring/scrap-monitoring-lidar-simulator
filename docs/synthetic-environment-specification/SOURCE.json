@@ -1,25 +1,25 @@
 {
   "schema_version": 2,
   "environment_id": "synthetic-scrap-pit-v1",
-  "input_fingerprint_sha256": "c062670498a299f28eecf78667c18eccea6316ae06d8711a48ba99b2aa27f126",
-  "artifact_fingerprint_sha256": "be782bd9e5ffdd86a94c545da9d673ce206d76956fabdbad20a8974a1199120b",
+  "input_fingerprint_sha256": "c32cf15d35bea83279c938c0dd4971835494072b4d94835675f4fb4c9c6b9adc",
+  "artifact_fingerprint_sha256": "c1adc3d418b8228ab2cceb16d237b302f287f1164369ec58456c702c8f955ce1",
   "sources": [
     {
       "path": "examples/environment.v1.json",
       "sha256": "9d1253e0ed80a3c2b67609c7397a499bf8e6061cbd7144ff273732e9aa32a33a"
     },
     {
-      "path": "examples/generator.v2.json",
-      "sha256": "33d21c149410f69e4ac1dcb2fc52caab2aaaffd61a8f4e986fb165ae740efd9f"
-    },
-    {
       "path": "examples/quality-profile.v1.json",
       "sha256": "a89f33e158c937e727d45523ad103a4b349298041dce1f12630fce6f2b6ee91c"
+    },
+    {
+      "path": "examples/simulator.v2.json",
+      "sha256": "33d21c149410f69e4ac1dcb2fc52caab2aaaffd61a8f4e986fb165ae740efd9f"
     }
   ],
-  "generator": {
+  "document_generator": {
     "path": "docs/synthetic-environment-specification/generate.py",
-    "sha256": "dab7098c346a21ed9f7cd5adb167b2d48eb4ca62d81593eede0c32b5346edf95"
+    "sha256": "52b31282447097c421a777099745bacfc8848b230ef1568561fcd6527cc0d3da"
   },
   "model_values": {
     "angle_of_repose_deg": 35.0,

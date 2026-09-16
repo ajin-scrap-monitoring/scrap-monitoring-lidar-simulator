@@ -17,18 +17,18 @@ use crate::{
     measurement::validate_scan_point_limit,
 };
 
-pub fn load_generator_config(path: impl AsRef<Path>) -> Result<GeneratorConfig> {
+pub fn load_simulator_config(path: impl AsRef<Path>) -> Result<SimulatorConfig> {
     let source = path.as_ref();
-    parse_generator_config(
-        &json::read_document(source, "generator configuration")?,
+    parse_simulator_config(
+        &json::read_document(source, "simulator configuration")?,
         source.parent().unwrap_or(Path::new(".")),
     )
 }
 
-pub fn parse_generator_config(
+pub fn parse_simulator_config(
     document: &str,
     base_directory: impl AsRef<Path>,
-) -> Result<GeneratorConfig> {
+) -> Result<SimulatorConfig> {
     let value = json::parse_document(document)?;
     let root = Object::new(
         &value,
@@ -64,7 +64,7 @@ pub fn parse_generator_config(
             MAX_DIAGNOSTIC_SCANS_PER_SENSOR,
         )?),
     };
-    Ok(GeneratorConfig {
+    Ok(SimulatorConfig {
         seed: json::integer(root.get("seed"), "$.seed", 0, u64::MAX)?,
         environment_path: resolve_path(&root, "environment_path", base)?,
         quality_profile_path: resolve_path(&root, "quality_profile_path", base)?,
@@ -75,12 +75,12 @@ pub fn parse_generator_config(
     })
 }
 
-pub fn load_generator_inputs(path: impl AsRef<Path>) -> Result<GeneratorInputs> {
-    let generator = load_generator_config(path)?;
-    let environment = load_environment(&generator.environment_path)?;
-    let quality_profile = load_quality_profile(&generator.quality_profile_path)?;
-    let inputs = GeneratorInputs {
-        generator,
+pub fn load_simulator_inputs(path: impl AsRef<Path>) -> Result<SimulatorInputs> {
+    let simulator = load_simulator_config(path)?;
+    let environment = load_environment(&simulator.environment_path)?;
+    let quality_profile = load_quality_profile(&simulator.quality_profile_path)?;
+    let inputs = SimulatorInputs {
+        simulator,
         environment,
         quality_profile,
     };
@@ -88,12 +88,12 @@ pub fn load_generator_inputs(path: impl AsRef<Path>) -> Result<GeneratorInputs> 
     Ok(inputs)
 }
 
-pub fn validate_inputs(inputs: &GeneratorInputs) -> Result<()> {
+pub fn validate_inputs(inputs: &SimulatorInputs) -> Result<()> {
     if inputs.environment.sensors.len() != 2 {
         return Err(ConfigurationError::new(
             ErrorKind::CrossInput,
             "$.sensors",
-            "generator inputs must contain exactly 2 environment sensors",
+            "simulator inputs must contain exactly 2 environment sensors",
         ));
     }
     let environment_ids: BTreeSet<_> = inputs
@@ -115,7 +115,7 @@ pub fn validate_inputs(inputs: &GeneratorInputs) -> Result<()> {
             "quality profile sensor_id values must exactly match environment sensors",
         ));
     }
-    for inlet in &inputs.generator.scenario.inlet_positions_xy_m {
+    for inlet in &inputs.simulator.scenario.inlet_positions_xy_m {
         if !polygon::contains(&inputs.environment.boundary_xy_m, *inlet)? {
             return Err(ConfigurationError::new(
                 ErrorKind::CrossInput,

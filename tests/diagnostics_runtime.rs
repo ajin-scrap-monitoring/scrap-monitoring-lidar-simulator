@@ -7,12 +7,12 @@ use std::{
 
 use scrap_monitoring_lidar_simulator::{
     MAX_DIAGNOSTIC_SCANS_PER_SENSOR,
-    configuration::{GeneratorInputs, load_generator_inputs},
+    configuration::{SimulatorInputs, load_simulator_inputs},
     diagnostics::{
         BoundedDiagnosticsWriter, DIAGNOSTICS_DRAIN_TIMEOUT, DIAGNOSTICS_QUEUE_CAPACITY,
         DiagnosticsRecordInput, DiagnosticsReferencePoint, DiagnosticsSubmit,
         DiagnosticsWriterConfig, MAX_DIAGNOSTICS_FILE_BYTES, MAX_DIAGNOSTICS_RECORD_BYTES,
-        ReferenceHitKind, generator_input_fingerprint, scan_captured_at_utc_us,
+        ReferenceHitKind, scan_captured_at_utc_us, simulator_input_fingerprint,
     },
     scenario::{ScenarioModelSnapshot, build_scenario_simulator},
 };
@@ -42,8 +42,8 @@ impl Drop for TestDirectory {
     }
 }
 
-fn inputs() -> GeneratorInputs {
-    load_generator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/generator.v2.json"))
+fn inputs() -> SimulatorInputs {
+    load_simulator_inputs(Path::new(env!("CARGO_MANIFEST_DIR")).join("examples/simulator.v2.json"))
         .unwrap()
 }
 
@@ -85,7 +85,7 @@ fn record(sensor_id: &str, scan_id: u64, completed_at_s: f64) -> DiagnosticsReco
 #[test]
 fn generation_fingerprint_matches_the_public_fixture() {
     assert_eq!(
-        generator_input_fingerprint(&inputs()).unwrap(),
+        simulator_input_fingerprint(&inputs()).unwrap(),
         "611b752a910a2015d69eb827981f167f3194a7fa21c52d351b4222d39c9a2604"
     );
 }
@@ -99,7 +99,7 @@ fn writer_configuration_enforces_sixteen_records_per_sensor_without_changing_v2_
     assert_eq!(DIAGNOSTICS_DRAIN_TIMEOUT.as_secs(), 2);
     assert_eq!(
         inputs()
-            .generator
+            .simulator
             .diagnostics
             .sample_scan_limit_per_sensor
             .get(),

@@ -2,9 +2,9 @@
 
 이 문서는 합성 통합 검증에 사용하는 공간, 센서 설치, 시나리오와 측정 설정의 자기완결 전달 문서다. 실제 현장 정보는 포함하지 않는다. 수치 정본은 문서 하단에 수록한 versioned JSON 3개다.
 
-Input fingerprint SHA-256: `c062670498a299f28eecf78667c18eccea6316ae06d8711a48ba99b2aa27f126`
+Input fingerprint SHA-256: `c32cf15d35bea83279c938c0dd4971835494072b4d94835675f4fb4c9c6b9adc`
 
-Artifact fingerprint SHA-256: `be782bd9e5ffdd86a94c545da9d673ce206d76956fabdbad20a8974a1199120b`
+Artifact fingerprint SHA-256: `c1adc3d418b8228ab2cceb16d237b302f287f1164369ec58456c702c8f955ce1`
 
 ## 도면
 
@@ -156,7 +156,7 @@ Source: `examples/environment.v1.json`
 
 ### 생성 시나리오와 측정 모델
 
-Source: `examples/generator.v2.json`
+Source: `examples/simulator.v2.json`
 
 ```json
 {

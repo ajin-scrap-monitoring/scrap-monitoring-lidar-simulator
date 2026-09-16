@@ -4,7 +4,7 @@
 
 시각화 프로그램은 별도 개발 장비에서 관찰 stream을 수신하고 현재 적재 모델을 공학용
 3D 화면과 MP4로 표현한다. 개별 scrap 조각의 물리 충돌이나 사실적 rendering은 범위에
-포함하지 않는다. 라이다 생성기, scan 수신 프로그램과 높이 계산 process는 이
+포함하지 않는다. 라이다 시뮬레이터, scan 수신 프로그램과 높이 계산 process는 이
 Repository의 구현 대상이 아니다.
 
 시각화 프로그램은 다음 5개 구성 요소로 나눈다.
@@ -18,7 +18,7 @@ Repository의 구현 대상이 아니다.
 ## 입력 인터페이스
 
 수신기는 [`contracts/observation/v1/`](../contracts/observation/v1/)의 version 1 계약을
-구현한다. 수신기는 TCP server이고 생성기가 client다. packet 분할과 여러 레코드의 packet
+구현한다. 수신기는 TCP server이고 시뮬레이터가 client다. packet 분할과 여러 레코드의 packet
 병합을 허용하며 LF 단위로 JSON 레코드를 복원한다. 연결의 첫 레코드로
 `load_model_stream_header` 1개를 받고 이후 `load_model_observation`을 계속 받는다. 최대
 line 크기 1,048,576 byte를 넘는 입력과 알 수 없는 version 또는 type을 거부한다.
@@ -30,14 +30,14 @@ line 크기 1,048,576 byte를 넘는 입력과 알 수 없는 version 또는 typ
 
 시각화 프로그램은 일반 scan stream을 입력으로 사용하거나 scan point로 적재 표면을
 추정하지 않는다. header가 장면을 제공하고 observation이 현재 적재물 표면을 제공하므로
-생성기 설정 파일은 필수 입력이 아니다.
+시뮬레이터 설정 파일은 필수 입력이 아니다.
 
 유효한 header는 LiDAR 2대의 위치와 방향을 정확히 포함한다. renderer는 두 센서를 모두 표시하고 `sensor_id`로 구분한다.
 
 ## 실시간 동작
 
 live 경로는 수신, 기록과 rendering 사이에 bounded queue를 사용한다. 느린 renderer는
-생성기 연결에서 읽기를 무기한 막지 않으며, 화면 갱신 대기 상태는 오래된 frame을
+시뮬레이터 연결에서 읽기를 무기한 막지 않으며, 화면 갱신 대기 상태는 오래된 frame을
 폐기하고 최신 상태를 유지한다. 연결이 끊기면 화면에 disconnected 상태와 마지막 정상
 레코드의 시각을 표시하고 같은 port에서 다음 연결을 계속 기다린다.
 
@@ -85,7 +85,7 @@ rendering 및 FFmpeg 의존성은 시각화 Repository에만 두며 엣지 시�
 
 수신 line, live queue, 기록량, frame 수, FPS(Frame Per Second)와 해상도에 각각 유한한
 상한을 둔다. 초기 기본 상한은 최대 3,000 frame, 60 FPS와 3,840 x 2,160 해상도다.
-receiver 또는 renderer 장애는 엣지 생성기의 scan 생성 및 기존 scan 전송 상태를
+receiver 또는 renderer 장애는 엣지 시뮬레이터의 scan 생성 및 기존 scan 전송 상태를
 변경하지 않는다.
 
 TCP version 1은 개발용 단일 producer 연결만 다루며 ACK, 인증, 압축, broker와 전달

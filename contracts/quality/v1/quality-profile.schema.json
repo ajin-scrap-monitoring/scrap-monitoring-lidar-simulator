@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-generator/contracts/quality/v1/quality-profile.schema.json",
+  "$id": "https://github.com/ajin-scrap-monitoring/scrap-monitoring-lidar-simulator/contracts/quality/v1/quality-profile.schema.json",
   "title": "Synthetic LiDAR quality profile v1",
   "type": "object",
   "additionalProperties": false,
